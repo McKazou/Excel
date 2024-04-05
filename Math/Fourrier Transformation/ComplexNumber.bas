@@ -95,3 +95,58 @@ Public Function String2Complex(ByVal s As String) As Complex
 ERROR_HANDLE:
   String2Complex = Cplx(0, 0)
 End Function
+
+Public Function Atn2(y As Double, x As Double) As Double
+    If x > 0 Then
+        Atn2 = Atn(y / x)
+    ElseIf y >= 0 And x < 0 Then
+        Atn2 = Atn(y / x) + Application.Pi()
+    ElseIf y < 0 And x < 0 Then
+        Atn2 = Atn(y / x) - Application.Pi()
+    ElseIf y > 0 And x = 0 Then
+        Atn2 = Application.Pi() / 2
+    ElseIf y < 0 And x = 0 Then
+        Atn2 = -Application.Pi() / 2
+    Else
+        Atn2 = 0 ' x = 0, y = 0, indéfini
+    End If
+End Function
+
+Public Function Cartesien2Exponentiel(ByRef z As Complex) As Complex
+    Dim r As Double
+    Dim theta As Double
+    Dim t As Double
+    
+    ' Calcul du module r
+    r = CMagnitude(z)
+    
+    ' Calcul de l'argument theta
+    theta = Atn2(z.im, z.re)
+    
+    ' Normalisation de theta pour obtenir t
+    t = theta / (2 * Application.Pi())
+    
+    ' Conversion en forme exponentielle
+    Cartesien2Exponentiel.re = r * Cos(2 * Application.Pi() * t)
+    Cartesien2Exponentiel.im = r * Sin(2 * Application.Pi() * t)
+End Function
+
+Public Function Exponentiel2Cartesien(ByRef z As Complex) As Complex
+    Dim r As Double
+    Dim t As Double
+    Dim theta As Double
+    
+    ' Calcul du module r
+    r = CMagnitude(z)
+    
+    ' Calcul de t
+    t = Atn2(z.im, z.re) / (2 * Application.Pi())
+    
+    ' Conversion de t en theta
+    theta = t * 2 * Application.Pi()
+    
+    ' Conversion en forme cartésienne
+    Exponentiel2Cartesien.re = r * Cos(theta)
+    Exponentiel2Cartesien.im = r * Sin(theta)
+End Function
+
