@@ -52,6 +52,38 @@ Class Complex
     Public Function CMagnitude() As Double
         CMagnitude = Sqr((Me.re ^ 2) + (Me.im ^ 2))
     End Function
+
+    'Normilize the "Me" complex
+    Public Sub Normalize()
+        Dim magnitude As Double
+        magnitude = Me.CMagnitude()
+        If magnitude <> 0 Then
+            Me.Re = Me.Re / magnitude
+            Me.Im = Me.Im / magnitude
+        Else
+            Err.Raise Number:=vbObjectError + 9999, _
+                Source:="Complex::Normalize", _
+                Description:="Cannot normalize a complex number with magnitude 0."
+        End If
+    End Sub
+
+    'Create a new complex to return but normilized
+    Public Function Normalized() As Complex
+        Dim magnitude As Double
+        Dim result As New Complex
+        magnitude = Me.CMagnitude()
+        If magnitude <> 0 Then
+            result.Re = Me.Re / magnitude
+            result.Im = Me.Im / magnitude
+        Else
+            Err.Raise Number:=vbObjectError + 9999, _
+                Source:="Complex::Normalized", _
+                Description:="Cannot normalize a complex number with magnitude 0."
+        End If
+        Set Normalized = result
+    End Function
+
+
 End Class
 
 
