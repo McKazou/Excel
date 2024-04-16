@@ -16,7 +16,12 @@ Public b As Double ' Composante imaginaire i
 Public c As Double ' Composante imaginaire j
 Public d As Double ' Composante imaginaire k
 
-
+' Constructeur de la classe
+Public Sub Class_Initialize()
+    On Error GoTo 0
+    Dim xlma As New XlmaManager
+    xlma.refreshModuleByName "Math_Quaternion", ThisWorkbook.VBProject
+End Sub
 
 Public Sub fromString(s As String)
     Dim a As Double, b As Double, c As Double, d As Double
