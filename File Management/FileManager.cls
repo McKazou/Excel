@@ -13,19 +13,54 @@ Option Explicit
 Private pPath As String
 Private pReadOnly As Boolean
 Private pHidden As Boolean
-' Propriété fullPath
 Private pFullPath As String
+
+' Propriété Path
+Public Property Let Path(ByVal Value As String)
+    pPath = Value
+End Property
+
+Public Property Get Path() As String
+    Path = pPath
+End Property
+
+' Propriété ReadOnly
+Public Property Let ReadOnly(ByVal Value As Boolean)
+    pReadOnly = Value
+End Property
+
+Public Property Get ReadOnly() As Boolean
+    ReadOnly = pReadOnly
+End Property
+
+' Propriété Hidden
+Public Property Let Hidden(ByVal Value As Boolean)
+    pHidden = Value
+End Property
+
+Public Property Get Hidden() As Boolean
+    Hidden = pHidden
+End Property
+
+' Propriété FullPath
+Public Property Let FullPath(ByVal Value As String)
+    pFullPath = Value
+End Property
+
+Public Property Get FullPath() As String
+    FullPath = pFullPath
+End Property
 
 ' Méthode pour définir le classeur actuel
 Public Sub setThisWorkbook()
     ' Définir le chemin du classeur actuel
-    pPath = ThisWorkbook.path
+    pPath = ThisWorkbook.Path
     
     ' Définir si le classeur est en lecture seule
     pReadOnly = ThisWorkbook.ReadOnly
     
     ' Vérifier si le classeur est ouvert dans une fenêtre
-    If ThisWorkbook.Windows.count > 0 Then
+    If ThisWorkbook.Windows.Count > 0 Then
         ' Définir si le classeur est caché
         pHidden = Not ThisWorkbook.Windows(1).Visible
     Else
@@ -34,7 +69,7 @@ Public Sub setThisWorkbook()
     End If
     
     ' Définir le chemin complet du classeur
-    pFullPath = ThisWorkbook.path & "\" & ThisWorkbook.name
+    pFullPath = ThisWorkbook.Path & "\" & ThisWorkbook.Name
 End Sub
 
 
@@ -57,7 +92,7 @@ End Function
 ' Méthode pour obtenir la date de dernière sauvegarde d'un fichier
 Public Function lastSaved() As Date
     ' Vérifiez si le fichier existe
-    If Dir(pPath) <> "" Then
+    If pPath <> "" Then
         ' Obtenez la date de dernière modification du fichier
         lastSaved = FileDateTime(pPath)
     Else
@@ -67,12 +102,12 @@ Public Function lastSaved() As Date
 End Function
 
 ' Méthode pour obtenir un fichier à partir d'un chemin
-Public Function getFileFromPath(path As String) As String
+Public Function getFileFromPath(Path As String) As String
     ' Code pour obtenir un fichier à partir d'un chemin
 End Function
 
 ' Méthode pour obtenir un dossier à partir d'un chemin
-Public Function getFolderFromPath(path As String) As String
+Public Function getFolderFromPath(Path As String) As String
     ' Code pour obtenir un dossier à partir d'un chemin
 End Function
 
@@ -86,40 +121,50 @@ Public Function getPathWhereScriptIsRun() As String
     ' Code pour obtenir le chemin où le script est exécuté
 End Function
 
-Private pFullPath As String
+Public Sub FileFinder(FileName As String, selectedFolder As String, isRecursif As Boolean, recursifLimit As Integer, Optional ignoreHidden As Boolean = True)
+    Dim FSO As Object
+    Dim Folder As Object
+    Dim Subfolder As Object
+    Dim File As Object
 
-Public Sub FileFinder(FileName As String, selectedFolder As String, isRecursif As Boolean, recursifLimit As Integer)
-    Dim strTemp As String
-    Dim strFolders() As String
-    Dim intFolderCount As Integer
-    Dim i As Integer
-    
     If recursifLimit = 0 Then Exit Sub
-    
-    strTemp = Dir(selectedFolder & "\" & FileName, vbNormal Or vbReadOnly Or vbHidden Or vbSystem Or vbDirectory)
-    
-    While strTemp <> ""
-        If strTemp = FileName Then
-            pFullPath = selectedFolder & "\" & strTemp
+
+    ' Vérifiez si selectedFolder se termine par un backslash
+    If Right(selectedFolder, 1) <> "\" Then
+        selectedFolder = selectedFolder & "\"
+    End If
+
+    Set FSO = CreateObject("Scripting.FileSystemObject")
+    Set Folder = FSO.GetFolder(selectedFolder)
+
+    ' Parcourir tous les fichiers dans le dossier
+    For Each File In Folder.Files
+        If File.Name = FileName Then
+            pFullPath = File.Path
+            pPath = selectedFolder
             Exit Sub
         End If
-        If (GetAttr(selectedFolder & "\" & strTemp) And vbDirectory) = vbDirectory Then
-            If strTemp <> "." And strTemp <> ".." Then
-                intFolderCount = intFolderCount + 1
-                ReDim Preserve strFolders(1 To intFolderCount)
-                strFolders(intFolderCount) = selectedFolder & "\" & strTemp
-            End If
-        End If
-        strTemp = Dir
-    Wend
-    
+    Next File
+
+    ' Parcourir les sous-dossiers si isRecursif est True
     If isRecursif Then
-        For i = 1 To intFolderCount
-            FileFinder FileName, strFolders(i), True, recursifLimit - 1
-            If pFullPath <> "" Then Exit Sub
-        Next i
+        For Each Subfolder In Folder.Subfolders
+            ' Ignore les dossiers cachés si ignoreHidden est True
+            If ignoreHidden And Subfolder.Attributes And 2 Then
+                ' Ce dossier est caché, donc on l'ignore
+            Else
+                FileFinder FileName, Subfolder.Path, isRecursif, recursifLimit - 1, ignoreHidden
+            End If
+        Next Subfolder
     End If
+
+    Set File = Nothing
+    Set Folder = Nothing
+    Set FSO = Nothing
 End Sub
+
+
+
 
 
 ' Méthode pour renommer un fichier
