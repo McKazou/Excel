@@ -2,7 +2,7 @@ VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
-Attribute VB_Name = "FileManager"
+Attribute VB_Name = "FileTool"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
@@ -16,30 +16,30 @@ Private pHidden As Boolean
 Private pFullPath As String
 
 ' Propriété Path
-Public Property Let Path(ByVal Value As String)
+Public Property Let path(ByVal Value As String)
     pPath = Value
 End Property
 
-Public Property Get Path() As String
-    Path = pPath
+Public Property Get path() As String
+    path = pPath
 End Property
 
 ' Propriété ReadOnly
-Public Property Let ReadOnly(ByVal Value As Boolean)
+Public Property Let readOnly(ByVal Value As Boolean)
     pReadOnly = Value
 End Property
 
-Public Property Get ReadOnly() As Boolean
-    ReadOnly = pReadOnly
+Public Property Get readOnly() As Boolean
+    readOnly = pReadOnly
 End Property
 
 ' Propriété Hidden
-Public Property Let Hidden(ByVal Value As Boolean)
+Public Property Let hidden(ByVal Value As Boolean)
     pHidden = Value
 End Property
 
-Public Property Get Hidden() As Boolean
-    Hidden = pHidden
+Public Property Get hidden() As Boolean
+    hidden = pHidden
 End Property
 
 ' Propriété FullPath
@@ -54,10 +54,10 @@ End Property
 ' Méthode pour définir le classeur actuel
 Public Sub setThisWorkbook()
     ' Définir le chemin du classeur actuel
-    pPath = ThisWorkbook.Path
+    pPath = ThisWorkbook.path
     
     ' Définir si le classeur est en lecture seule
-    pReadOnly = ThisWorkbook.ReadOnly
+    pReadOnly = ThisWorkbook.readOnly
     
     ' Vérifier si le classeur est ouvert dans une fenêtre
     If ThisWorkbook.Windows.Count > 0 Then
@@ -69,15 +69,40 @@ Public Sub setThisWorkbook()
     End If
     
     ' Définir le chemin complet du classeur
-    pFullPath = ThisWorkbook.Path & "\" & ThisWorkbook.Name
+    pFullPath = ThisWorkbook.path & "\" & ThisWorkbook.Name
 End Sub
 
 
 
 ' Méthode pour ouvrir un fichier
-Public Sub openFile()
-    ' Code pour ouvrir un fichier
+Public Sub openFile(applicationName As String, filePath As String)
+    Dim cmd As String
+    cmd = "cmd /c start """" """ & applicationName & """ """ & filePath & """"
+    Call Shell(cmd, vbNormalFocus)
 End Sub
+
+' Dans la classe FileManager
+Public Function isFileOpen(filePath As String) As Boolean
+    Dim fileNum As Integer
+    Dim isOpen As Boolean
+    
+    On Error Resume Next
+    fileNum = FreeFile()
+    Open filePath For Binary Lock Read Write As #fileNum
+    If Err.Number <> 0 Then
+        ' Si une erreur se produit, cela signifie que le fichier est déjà ouvert
+        isOpen = True
+    Else
+        ' Si aucune erreur ne se produit, cela signifie que le fichier n'est pas ouvert
+        Close #fileNum
+        isOpen = False
+    End If
+    On Error GoTo 0
+    
+    isFileOpen = isOpen
+End Function
+
+
 
 ' Méthode pour fermer un fichier
 Public Sub closeFile()
@@ -102,12 +127,12 @@ Public Function lastSaved() As Date
 End Function
 
 ' Méthode pour obtenir un fichier à partir d'un chemin
-Public Function getFileFromPath(Path As String) As String
+Public Function getFileFromPath(path As String) As String
     ' Code pour obtenir un fichier à partir d'un chemin
 End Function
 
 ' Méthode pour obtenir un dossier à partir d'un chemin
-Public Function getFolderFromPath(Path As String) As String
+Public Function getFolderFromPath(path As String) As String
     ' Code pour obtenir un dossier à partir d'un chemin
 End Function
 
@@ -140,7 +165,7 @@ Public Sub FileFinder(FileName As String, selectedFolder As String, isRecursif A
     ' Parcourir tous les fichiers dans le dossier
     For Each File In Folder.Files
         If File.Name = FileName Then
-            pFullPath = File.Path
+            pFullPath = File.path
             pPath = selectedFolder
             Exit Sub
         End If
@@ -153,7 +178,7 @@ Public Sub FileFinder(FileName As String, selectedFolder As String, isRecursif A
             If ignoreHidden And Subfolder.Attributes And 2 Then
                 ' Ce dossier est caché, donc on l'ignore
             Else
-                FileFinder FileName, Subfolder.Path, isRecursif, recursifLimit - 1, ignoreHidden
+                FileFinder FileName, Subfolder.path, isRecursif, recursifLimit - 1, ignoreHidden
             End If
         Next Subfolder
     End If
