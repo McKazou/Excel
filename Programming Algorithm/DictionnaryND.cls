@@ -131,12 +131,12 @@ Private Function IsInCollection(col As Collection, key As Variant) As Boolean
     On Error GoTo 0
 End Function
 
-
+' Supprime une paire cl?-valeur du dictionnaire
+' keys : Un tableau de cl?s de la paire ? supprimer
 Public Function Remove(keys() As Variant)
-    Dim dimension As Collection
-    Dim keyInCollection As Variant
-    Dim i As Integer
-    Dim found As Boolean
+    Dim i, j As Integer
+    Dim hasAllKey As Boolean
+    Dim Dimen As Collection
     On Error Resume Next
     ' Vérifie si la dimension du dictionnaire a été spécifiée
     If Me.dimension = 0 Then
@@ -146,28 +146,33 @@ Public Function Remove(keys() As Variant)
         If UBound(keys) - LBound(keys) + 1 <> Me.dimension Then
             Err.Raise 1013, , "Number of keys does not match the number of dimensions."
         Else
-            ' Parcourt les collections de clés pour trouver et supprimer la paire clé-valeur
-            i = 1
-            For Each dimension In nKeys
-                found = True
-                For j = LBound(keys) To UBound(keys)
-                    If dimension(j) <> keys(j) Then
-                        found = False
+            ' Parcourt les collections afin de tester si la valeur est égale à la clé donné en parmaètre
+            'Parcours toutes les clés
+            For i = 1 To nKeys(1).count
+            hasAllKey = True
+            
+            'Parcours toutes les dimensions
+                For j = 1 To Me.dimension
+                    hasAllKey = (IIf(nKeys(j)(i) = keys(j), 1, 0)) * hasAllKey
+                    If hasAllKey = False Then
                         Exit For
                     End If
                 Next j
-                If found Then
-                    ' Supprime la paire clé-valeur
-                    dimension.Remove i
-                    values.Remove i
-                    Exit Function
-                End If
-                i = i + 1
-            Next dimension
+                'Si on a trouvé toutes les clés alors on retourne la valeur
+                If hasAllKey = True Then
+                    ' Retourne la valeur
+                    values.Remove (i)
+                    For Each Dimen In nKeys
+                        Dimen.Remove (i)
+                    Next
+                Exit Function
+            End If
+            Next i
+
         End If
         ' Si les clés ne sont pas trouvées, lève une erreur
-        If Not found Then
-            Err.Raise 1012, , "Keys " & Join(keys, ", ") & " not found in the dictionary."
+        If hasAllKey = False Then
+            Err.Raise 1013, , "Keys " & Join(keys, ", ") & " not found in the dictionary."
         End If
     End If
     On Error GoTo 0
@@ -180,12 +185,9 @@ End Function
 ' keys : Un tableau de clés dont la valeur doit être obtenue
 ' Retourne : La valeur associée aux clés
 Public Function item(keys() As Variant) As Variant
-    Dim dimension As Collection
-    Dim keyInCollection As Variant
-    Dim key As Variant
     Dim i As Integer
     Dim j As Integer
-    Dim found As Boolean
+    Dim hasAllKey As Boolean
     On Error Resume Next
     ' Vérifie si la dimension du dictionnaire a été spécifiée
     If Me.dimension = 0 Then
@@ -195,32 +197,36 @@ Public Function item(keys() As Variant) As Variant
         If UBound(keys) - LBound(keys) + 1 <> Me.dimension Then
             Err.Raise 1013, , "Number of keys does not match the number of dimensions."
         Else
-            ' Parcourt les collections de clés pour trouver la valeur
+            ' Parcourt les collections afin de tester si la valeur est égale à la clé donné en parmaètre
+            'Parcours toutes les clés
             For i = 1 To nKeys(1).count
-                found = True
-                j = 1
-                For Each dimension In nKeys
-                    For Each keyInCollection In dimension
-                        If keyInCollection = keys(j) Then
-                            Exit For
-                        End If
-                    Next keyInCollection
-                    j = j + 1
-                Next dimension
-                If found Then
+            hasAllKey = True
+            
+            'Parcours toutes les dimensions
+                For j = 1 To Me.dimension
+                    hasAllKey = (IIf(nKeys(j)(i) = keys(j), 1, 0)) * hasAllKey
+                    If hasAllKey = False Then
+                        Exit For
+                    End If
+                Next j
+                'Si on a trouvé toutes les clés alors on retourne la valeur
+                If hasAllKey = True Then
                     ' Retourne la valeur
                     item = values(i)
-                    Exit Function
-                End If
+                Exit Function
+            End If
             Next i
+
         End If
         ' Si les clés ne sont pas trouvées, lève une erreur
-        If Not found Then
+        If hasAllKey = False Then
             Err.Raise 1013, , "Keys " & Join(keys, ", ") & " not found in the dictionary."
         End If
     End If
     On Error GoTo 0
 End Function
+
+
 
 
 
@@ -291,6 +297,32 @@ Public Function toArray() As Variant
     toArray = arr
 End Function
 
+' Initialise le dictionnaire à partir d'un tableau 2D
+' arr : Un tableau 2D où chaque ligne est une paire clé-valeur
+Public Function FromArray(arr() As Variant)
+    Dim i As Integer
+    Dim j As Integer
+    Dim newKeys As Collection
+    ' Vérifie si la dimension du tableau a été spécifiée
+    If UBound(arr, 2) = 0 Then
+        Err.Raise 1011, , "Dimension of the array has not been specified."
+    Else
+        ' Redimensionne le dictionnaire pour contenir toutes les paires clé-valeur
+        Me.dimension = UBound(arr, 2) - 1
+
+        Set values = New Collection
+        ' Remplit le dictionnaire avec les clés et les valeurs
+        For i = LBound(arr, 1) To UBound(arr, 1)
+            For j = LBound(arr, 2) To UBound(arr, 2) - 1
+                nKeys(j).Add arr(i, j)
+            Next j
+            values.Add arr(i, UBound(arr, 2))
+        Next i
+    End If
+End Function
+
+
+
 
 
 Sub Test()
@@ -309,19 +341,26 @@ Sub Test()
         value = "Value_" & i
         dict.Add value, keys
     Next i
+    
+    'Initialisation des tableaux de sorti
     Dim arr() As Variant
+    Dim arr2() As Variant
+    
     arr = dict.toArray
     
-    ' Vérifie l'existence des clés et obtient les valeurs
-    For i = 1 To 10
-        keys(1) = "Key1_" & i
-        keys(2) = "Key2_" & i
-        If dict.Exists(keys) Then
-            Debug.Print "Keys: " & Join(keys, ", ") & ", Value: " & dict.item(keys)
-        Else
-            Debug.Print "Keys: " & Join(keys, ", ") & " not found in the dictionary."
-        End If
-    Next i
+    Dim dictFromArray As New DictionnaryND
+    dictFromArray.FromArray arr
+
+    arr2 = dictFromArray.toArray
+    
+    
+    Dim result As String
+    result = dictFromArray.item(keys)
+    If Not result = value Then
+        Debug.Print "ERROR - Got the item :" & result & " for the keys {" & keys(1) & "," & keys(2) & "} should have gotten " & value
+    Else
+        Debug.Print "VALID - Got the item :" & result & " for the keys {Key1_10, Key2_10} - VALID"
+    End If
     
     ' Supprime des paires clé-valeur du dictionnaire
     For i = 1 To 5
