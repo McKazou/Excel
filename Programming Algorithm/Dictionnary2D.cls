@@ -129,3 +129,47 @@ Private Function IsInCollection(col As Collection, key As Variant) As Boolean
     On Error GoTo 0
 End Function
 
+Sub Test()
+    Dim dict As New Dictionnary2D
+    Dim key1 As Variant, key2 As Variant
+    Dim value As Variant
+    Dim i As Integer
+    
+    ' Ajoute des paires clé-valeur au dictionnaire
+    For i = 1 To 10
+        key1 = "Key1_" & i
+        key2 = "Key2_" & i
+        value = "Value_" & i
+        dict.Add key1, key2, value
+    Next i
+    
+    ' Vérifie l'existence des clés et obtient les valeurs
+    For i = 1 To 10
+        key1 = "Key1_" & i
+        key2 = "Key2_" & i
+        If dict.Exists(key1, key2) Then
+            Debug.Print "Keys: " & key1 & ", " & key2 & ", Value: " & dict.item(key1, key2)
+        Else
+            Debug.Print "Keys: " & key1 & ", " & key2 & " not found in the dictionary."
+        End If
+    Next i
+    
+    ' Supprime des paires clé-valeur du dictionnaire
+    For i = 1 To 5
+        key1 = "Key1_" & i
+        key2 = "Key2_" & i
+        dict.Remove key1, key2
+    Next i
+    
+    ' Vérifie à nouveau l'existence des clés et obtient les valeurs
+    For i = 1 To 10
+        key1 = "Key1_" & i
+        key2 = "Key2_" & i
+        If dict.Exists(key1, key2) Then
+            Debug.Print "Keys: " & key1 & ", " & key2 & ", Value: " & dict.item(key1, key2)
+        Else
+            Debug.Print "Keys: " & key1 & ", " & key2 & " not found in the dictionary."
+        End If
+    Next i
+End Sub
+
