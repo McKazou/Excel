@@ -94,7 +94,7 @@ Public Function Exists(keys() As Variant) As Boolean
     Dim found As Boolean
     ' Vérifie si la dimension du dictionnaire a été spécifiée
     If dimension = 0 Then
-        Err.Raise 1012, , "Dimension of the dictionary has not been specified."
+        Err.Raise 1012, , "Dictionary has not been initialize."
     Else
         ' Parcourt les collections de clés pour vérifier l'existence de la clé
         For i = 1 To nKeys(1).count
@@ -140,7 +140,7 @@ Public Function Remove(keys() As Variant)
     On Error Resume Next
     ' Vérifie si la dimension du dictionnaire a été spécifiée
     If Me.dimension = 0 Then
-        Err.Raise 1012, , "Dimension of the dictionary has not been specified."
+        Err.Raise 1012, , "Dictionary has not been initialize."
     Else
         ' Vérifie si le nombre de clés correspond au nombre de dimensions
         If UBound(keys) - LBound(keys) + 1 <> Me.dimension Then
@@ -191,7 +191,7 @@ Public Function item(keys() As Variant) As Variant
     On Error Resume Next
     ' Vérifie si la dimension du dictionnaire a été spécifiée
     If Me.dimension = 0 Then
-        Err.Raise 1012, , "Dimension of the dictionary has not been specified."
+        Err.Raise 1012, , "Dictionary has not been initialize."
     Else
         ' Vérifie si le nombre de clés correspond au nombre de dimensions
         If UBound(keys) - LBound(keys) + 1 <> Me.dimension Then
@@ -226,52 +226,58 @@ Public Function item(keys() As Variant) As Variant
     On Error GoTo 0
 End Function
 
-
-
-
-
-
 ' Obtient toutes les valeurs associées à une clé donnée
 ' keys : Un tableau de clés dont les valeurs doivent être obtenues
+' keepKey : Un paramètre optionnel pour déterminer si la clé doit être conservée dans le nouveau dictionnaire
 ' Retourne : Un objet DictionnaryND contenant les valeurs associées aux clés
-Public Function items(keys() As Variant) As DictionnaryND
+Public Function items(keys() As Variant, Optional keepKey As Boolean = True) As DictionnaryND
     Dim i As Integer
     Dim j As Integer
-    Dim found As Boolean
-    Dim results As New DictionnaryND
-    On Error Resume Next
+    Dim hasKey As Boolean
+    Dim newDict As DictionnaryND
+    Set newDict = New DictionnaryND
+    
     ' Vérifie si la dimension du dictionnaire a été spécifiée
-    If dimension = 0 Then
-        Err.Raise 1012, , "Dimension of the dictionary has not been specified."
+    If Me.dimension = 0 Then
+        Err.Raise 1012, , "Dictionary has not been initialize."
     Else
         ' Vérifie si le nombre de clés correspond au nombre de dimensions
-        If UBound(keys) - LBound(keys) + 1 <> n Then
+        If UBound(keys) - LBound(keys) + 1 <> Me.dimension Then
             Err.Raise 1013, , "Number of keys does not match the number of dimensions."
         Else
-            ' Parcourt les collections de clés pour trouver les valeurs
+            ' Parcourt les collections afin de tester si la valeur est égale à la clé donné en paramètre
+            'Parcours toutes les clés
             For i = 1 To nKeys(1).count
-                found = True
-                For j = LBound(keys) To UBound(keys) - 1
-                    If nKeys(j + 1)(i) <> keys(j) Then
-                        found = False
+                hasKey = True
+        
+                'Parcours toutes les dimensions
+                For j = 1 To Me.dimension
+                    If nKeys(j)(i) = keys(j) Then
+                        hasKey = True
+                    Else
+                        hasKey = False
                         Exit For
                     End If
                 Next j
-                If found And nKeys(UBound(keys))(i) = keys(UBound(keys)) Then
-                    ' Ajoute la valeur à l'objet DictionnaryND de résultats
-                    results.Add values(i)
+        
+                'Si on a trouvé la clé alors on ajoute la valeur au nouveau dictionnaire
+                If hasKey = True Then
+                    ' Ajoute la valeur au nouveau dictionnaire
+                    newDict.Add values(i), keys
                 End If
             Next i
-        End If
-        ' Si les clés ne sont pas trouvées, lève une erreur
-        If Not found Then
-            Err.Raise 1014, , "Keys " & Join(keys, ", ") & " not found in the dictionary."
-        Else
-            Set items = results
+        
+            ' Si keepKey est False, alors on supprime la clé du nouveau dictionnaire
+            If keepKey = False Then
+                newDict.Remove keys
+            End If
+        
+            ' Retourne le nouveau dictionnaire
+            Set items = newDict
         End If
     End If
-    On Error GoTo 0
 End Function
+
 
 ' Crée un tableau 2D à partir du dictionnaire
 ' Retourne : Un tableau 2D où chaque ligne est une paire clé-valeur du dictionnaire
@@ -329,22 +335,25 @@ Sub Test()
     Dim dict As New DictionnaryND
     Dim keys(1 To 2) As Variant
     Dim value As Variant
-    Dim i As Integer
+    Dim i, j As Integer
     
     ' Initialise le dictionnaire avec 2 dimensions
     dict.dimension = 2
     
     ' Ajoute des paires clé-valeur au dictionnaire
     For i = 1 To 10
-        keys(1) = "Key1_" & i
-        keys(2) = "Key2_" & i
-        value = "Value_" & i
-        dict.Add value, keys
+        For j = 1 To 10
+            keys(1) = "Key1_" & i & j
+            keys(2) = "Key2_" & i & j
+            value = "Value_" & i & j
+            dict.Add value, keys
+        Next j
     Next i
     
     'Initialisation des tableaux de sorti
     Dim arr() As Variant
     Dim arr2() As Variant
+    Dim arr3() As Variant
     
     arr = dict.toArray
     
@@ -364,20 +373,27 @@ Sub Test()
     
     ' Supprime des paires clé-valeur du dictionnaire
     For i = 1 To 5
-        keys(1) = "Key1_" & i
-        keys(2) = "Key2_" & i
+        keys(1) = "Key1_" & i & "1"
+        keys(2) = "Key2_" & i & "1"
         dict.Remove keys
     Next i
     
     ' Vérifie à nouveau l'existence des clés et obtient les valeurs
     For i = 1 To 10
-        keys(1) = "Key1_" & i
-        keys(2) = "Key2_" & i
+        keys(1) = "Key1_" & i & "1"
+        keys(2) = "Key2_" & i & "1"
         If dict.Exists(keys) Then
             Debug.Print "Keys: " & Join(keys, ", ") & ", Value: " & dict.item(keys)
         Else
             Debug.Print "Keys: " & Join(keys, ", ") & " not found in the dictionary."
         End If
     Next i
+    
+    Dim slice As DictionnaryND
+
+    keys(2) = Empty
+    Set slice = dictFromArray.items(keys)
+    arr3 = slice.toArray
+    
 End Sub
 
