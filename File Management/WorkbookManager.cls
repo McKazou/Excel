@@ -145,7 +145,7 @@ Public Sub ShowHiddenWorkbooks()
     Dim window As Variant
     ' Parcourez tous les classeurs dans le dictionnaire openWorkbooks
     For Each key In openWorkbooks.keys
-        Set wb = openWorkbooks.Item(key)
+        Set wb = openWorkbooks.item(key)
         ' Parcourez toutes les fenêtres de chaque classeur
         For Each window In wb.Windows
             ' Stockez l'état d'affichage actuel du workbook
@@ -165,11 +165,11 @@ Public Sub RestablishHiddenState()
     Dim window As Variant
     ' Parcourez tous les classeurs dans le dictionnaire openWorkbooks
     For Each key In openWorkbooks.keys
-        Set wb = openWorkbooks.Item(key)
+        Set wb = openWorkbooks.item(key)
         ' Parcourez toutes les fenêtres de chaque classeur
         For Each window In wb.Windows
             ' Si l'état d'affichage stocké est False, cachez la fenêtre
-            If Not workbookVisibility.Item(wb.name) Then
+            If Not workbookVisibility.item(wb.name) Then
                 window.Visible = False
             End If
         Next window
@@ -187,7 +187,7 @@ Public Sub CloseHiddenWorkbooks(Optional saveChanges As Variant)
     Me.RestablishHiddenState
     ' Parcourez tous les classeurs dans le dictionnaire openWorkbooks
     For Each key In openWorkbooks.keys
-        Set wb = openWorkbooks.Item(key)
+        Set wb = openWorkbooks.item(key)
         ' Parcourez toutes les fenêtres de chaque classeur
         For Each window In wb.Windows
             ' Si une fenêtre est cachée, fermez le classeur
