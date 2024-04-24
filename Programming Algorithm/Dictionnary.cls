@@ -66,13 +66,13 @@ End Function
 ' Obtient la valeur associée à une clé
 ' key : La clé dont la valeur doit être obtenue
 ' Retourne : La valeur associée à la clé
-Public Function Item(key As Variant) As Variant
+Public Function item(key As Variant) As Variant
     Dim i As Long
     Dim found As Boolean
     found = False
     For i = 1 To keys.count
         If keys(i) = key Then
-            Item = values(i)
+            item = values(i)
             found = True
             Exit Function
         End If
