@@ -19,23 +19,33 @@ Private this As VBIDE
 Private Const DEFAULT_LOADING_FOLDER As String = "\\STCCWP0015\pierre.leroy$\07_Code\Excel\"
 
 ' Méthode pour charger une liste de modules
-Public Sub include(ParamArray nomsDesModules() As Variant)
+Public Sub include(nomsDesModules() As Variant, Optional targetProject As VBIDE.VBProject)
     Dim nomDuModule As Variant
+    Dim cheminDuModule As String
+    Dim managedFile As New FileTool
+
     For Each nomDuModule In nomsDesModules
-        ' Construit le chemin du fichier en utilisant le dossier par défaut et le nom du module
-        Dim cheminDuModule As String
-        If Dir(DEFAULT_LOADING_FOLDER & nomDuModule & ".bas") <> "" Then
-            cheminDuModule = DEFAULT_LOADING_FOLDER & nomDuModule & ".bas"
-        ElseIf Dir(DEFAULT_LOADING_FOLDER & nomDuModule & ".cls") <> "" Then
-            cheminDuModule = DEFAULT_LOADING_FOLDER & nomDuModule & ".cls"
-        Else
-            MsgBox "Impossible de trouver le module " & nomDuModule & " dans le dossier : " & DEFAULT_LOADING_FOLDER, vbCritical, "Module non trouvé"
-            Next nomDuModule
+        ' Utilisez FileFinder pour obtenir le chemin du module
+        ' Essayez d'abord avec l'extension .bas
+        managedFile.FileFinder nomDuModule & ".bas", DEFAULT_LOADING_FOLDER, True, 10
+        cheminDuModule = managedFile.FullPath
+
+        ' Si aucun fichier n'a été trouvé, essayez avec l'extension .cls
+        If cheminDuModule = "" Then
+            managedFile.FileFinder nomDuModule & ".cls", DEFAULT_LOADING_FOLDER, True, 10
+            cheminDuModule = managedFile.FullPath
         End If
-        
-        ' Appelle la méthode addModule pour charger le module
-        Me.addModule cheminDuModule
+
+        ' Si aucun fichier n'a été trouvé, affichez un message d'erreur
+        If cheminDuModule = "" Then
+            MsgBox "Impossible de trouver le module " & nomDuModule & " dans le dossier : " & DEFAULT_LOADING_FOLDER, vbCritical, "Module non trouvé"
+        Else
+            ' Appelle la méthode addModule pour charger le module
+            Me.refreshModule cheminDuModule, targetProject
+        End If
+    Next nomDuModule
 End Sub
+
 
 
 ' Constructeur de la classe
@@ -43,7 +53,7 @@ Public Sub Class_Initialize()
     On Error GoTo 0
     ' Initialise le projet VBA pour ce classeur
     Set this.VBProject = ThisWorkbook.VBProject
-    Me.refreshModule "\\STCCWP0015\pierre.leroy$\07_Code\Excel\File Management\FileManager.cls"
+    Me.refreshModule "\\STCCWP0015\pierre.leroy$\07_Code\Excel\File Management\FileTool.cls"
 End Sub
 
 Public Sub refreshModule(cheminDuModule As String, Optional targetProject As VBIDE.VBProject)
@@ -57,9 +67,14 @@ Public Sub refreshModule(cheminDuModule As String, Optional targetProject As VBI
     ' Obtenez le nom du module à partir du chemin du module
     nomDuModule = Mid(cheminDuModule, InStrRev(cheminDuModule, "\") + 1)
     nomDuModule = Left(nomDuModule, InStrRev(nomDuModule, ".") - 1)
+    
+    'Obtenir le VBA Project
+    If targetProject Is Nothing Then
+        Set targetProject = this.VBProject
+    End If
 
     ' Obtenez la liste des modules chargés
-    Set modulesCharges = Me.modulesLoaded
+    Set modulesCharges = Me.modulesLoaded(targetProject)
 
     ' Vérifiez si le module est déjà chargé
     moduleEstCharge = False
@@ -72,13 +87,8 @@ Public Sub refreshModule(cheminDuModule As String, Optional targetProject As VBI
 
     ' Si le module n'est pas chargé, ajoutez-le et terminez la fonction
     If Not moduleEstCharge Then
-            ' Si targetProject n'est pas fourni, utilisez this.VBProject
-            If targetProject Is Nothing Then
-                Me.addModule cheminDuModule
-            Else
-                Me.addModule cheminDuModule, targetProject
-            End If
-        
+        ' Si targetProject n'est pas fourni, utilisez this.VBProject
+        Me.addModule cheminDuModule, targetProject
         Exit Sub
     End If
 
@@ -90,12 +100,12 @@ Public Sub refreshModule(cheminDuModule As String, Optional targetProject As VBI
     ' Si la date de dernière modification du module est plus récente que la date de dernière sauvegarde du classeur, rechargez le module
     If lastSavedModule > lastSavedExcel Then
         ' Fermez le module s'il existe déjà
-        Me.CloseModule nomDuModule
+        Me.CloseModule nomDuModule, targetProject
 
     ' Si la date de dernière sauvegarde du classeur est plus récente que la date de dernière modification du module, exportez le module vers le fichier
     ElseIf lastSavedModule < lastSavedExcel Then
         ' Exportez le module vers le fichier
-        this.VBProject.VBComponents.Item(nomDuModule).Export cheminDuModule
+        targetProject.VBComponents.Item(nomDuModule).Export cheminDuModule
     End If
 End Sub
 
@@ -112,24 +122,28 @@ Public Sub addModule(cheminDuModule As String, Optional targetProject As VBIDE.V
     Exit Sub
 ErrorHandler:
     ' Affiche un message si le module ne peut pas être chargé
-    MsgBox "Impossible de charger le module à partir du chemin : " & cheminDuModule, vbCritical, "Erreur de chargement du module"
+    MsgBox "[XlmaManager]{addModule} Impossible de charger le module à partir du chemin : " & cheminDuModule, vbCritical, "Erreur de chargement du module"
 End Sub
 
 ' Méthode pour fermer un module spécifique
-Public Sub CloseModule(nomDuModule As String)
+Public Sub CloseModule(nomDuModule As String, Optional targetProject As VBIDE.VBProject)
     Dim vbComp As VBIDE.VBComponent
     
+    If targetProject Is Nothing Then
+        Set targetProject = this.VBProject
+    End If
+    
     ' Parcourez tous les composants du projet VBA
-    For Each vbComp In this.VBProject.VBComponents
+    For Each vbComp In targetProject.VBComponents
         ' Si le nom du composant correspond au nom du module, supprimez le module
         If vbComp.Name = nomDuModule Then
-            this.VBProject.VBComponents.Remove vbComp
+            targetProject.VBComponents.Remove vbComp
             Exit Sub
         End If
     Next vbComp
     
     ' Si le module n'existe pas, affichez un message d'erreur
-    MsgBox "Le module " & nomDuModule & " n'existe pas dans ce projet.", vbExclamation
+    MsgBox "[XlmaManager]{removeModule} Le module " & nomDuModule & " n'existe pas dans ce projet.", vbExclamation
 End Sub
 
 
@@ -160,12 +174,12 @@ End Sub
 
 
 ' Propriété pour obtenir la liste des modules chargés
-Public Property Get modulesLoaded() As Collection
+Public Property Get modulesLoaded(Optional targetProject As VBIDE.VBProject) As Collection
     Dim vbComp As VBIDE.VBComponent
     Dim modulesCharges As New Collection
 
     ' Parcourez tous les composants du projet VBA
-    For Each vbComp In this.VBProject.VBComponents
+    For Each vbComp In targetProject.VBComponents
         ' Ajoutez le nom du module à la collection
         modulesCharges.Add vbComp.Name
     Next vbComp
@@ -196,11 +210,12 @@ End Function
 Public Sub ScheduleCheckReloadModules()
     Dim wb As Workbook
     Dim vbComp As VBIDE.VBComponent
-    Dim cheminDuModule As String
-    Dim managedFile As New FileManager
+    Dim nomsDesModules() As Variant
+    Dim i As Integer
 
     ' Parcourez tous les classeurs ouverts
     For Each wb In Application.Workbooks
+        i = 0
         ' Parcourez tous les modules du projet VBA du classeur
         For Each vbComp In wb.VBProject.VBComponents
             ' Ignorez certains composants en fonction de leur nom ou de leur type
@@ -210,25 +225,20 @@ Public Sub ScheduleCheckReloadModules()
                     Or vbComp.Type = vbext_ct_Document _
                     Or vbComp.Type = vbext_ct_StdModule) Then
                 
-                ' Utilisez FileFinder pour obtenir le chemin du module
-                ' Essayez d'abord avec l'extension .bas
-                managedFile.FileFinder vbComp.Name & ".bas", DEFAULT_LOADING_FOLDER, True, 10
-                cheminDuModule = managedFile.FullPath
-                
-                ' Si aucun fichier n'a été trouvé, essayez avec l'extension .cls
-                If cheminDuModule = "" Then
-                    managedFile.FileFinder vbComp.Name & ".cls", DEFAULT_LOADING_FOLDER, True, 10
-                    cheminDuModule = managedFile.FullPath
-                End If
-                
-                cheminDuModule = managedFile.FullPath
-
-                ' Actualisez le module
-                Me.refreshModule cheminDuModule, wb.VBProject
+                ' Ajoutez le nom du module à la liste
+                ReDim Preserve nomsDesModules(i)
+                nomsDesModules(i) = vbComp.Name
+                i = i + 1
             End If
         Next vbComp
+
+        ' Utilisez la fonction include pour charger tous les modules
+        Me.include nomsDesModules, wb.VBProject
     Next wb
 End Sub
+
+
+
 
 Public Sub renameAllExceptActiveModules()
     ' Rôle :
@@ -238,7 +248,7 @@ Public Sub renameAllExceptActiveModules()
     ' Problème qu'elle tente de résoudre :
     ' Lors de l'importation d'un module dans un projet VBA, si un module du même nom existe déjà,
     ' Excel renomme automatiquement le module importé en ajoutant un chiffre à la fin du nom.
-    ' Cela peut poser problème si vous comptez sur le nom du module pour certaines fonctionnalités de votre code. Par example instancier Dim a as new FileManager
+    ' Cela peut poser problème si vous comptez sur le nom du module pour certaines fonctionnalités de votre code. Par example instancier Dim a as new FileTool
     '
     ' Solution envisagée :
     ' Pour éviter ce problème, cette fonction renomme tous les modules qui ne sont pas actuellement actifs.
