@@ -73,6 +73,36 @@ Private Function FindKeys(keys() As Variant) As Variant
     FindKeys = Nothing
 End Function
 
+Private Function FindAllKeys(keys() As Variant) As Collection
+    Dim i As Integer
+    Dim j As Integer
+    Dim hasKey As Boolean
+    Dim indices As New Collection
+    'Parcours toutes les clés
+    For i = 1 To nKeys(1).count
+        hasKey = True
+        'Parcours toutes les dimensions
+        For j = 1 To Me.dimension
+            'Test si la clé fourni est vide ou Nothing
+            If keys(j) <> Nothing And keys(j) <> "" Then
+                'On calcul si la clé match parmis les nKeys on obtiens "1" sinon "0".
+                'Le produit de ces valeurs permets de faire un "ET" logique et de savoir si toutes les clés match
+                hasKey = (IIf(nKeys(j)(i) = keys(j), 1, 0)) * hasKey
+                If hasKey = False Then
+                    Exit For
+                End If
+            End If
+        Next j
+        'Si on a trouvé toutes les clés alors on ajoute l'indice à la collection
+        If hasKey Then
+            indices.Add i
+        End If
+    Next i
+    'Retourne la collection d'indices
+    Set FindAllKeys = indices
+End Function
+
+
 
 ' Ajoute une nouvelle paire clé-valeur au dictionnaire
 ' value : La valeur à ajouter
@@ -97,7 +127,7 @@ Public Sub Add(value As Variant, keys() As Variant)
                 i = FindKeys(keys)
                 
                 'Si on a trouvé toutes les clés alors on lance une erreur
-                If i <> Nothing Then
+                If Not IsNothing(i) Then
                     ' Si les clés existent déjà, on remplace la valeur associée
                     Err.Raise 1014, , "Keys " & Join(keys, ", ") & " already exist in the dictionary."
                     Exit Sub
@@ -120,35 +150,24 @@ End Sub
 
 
 
-' Vérifie si une clé existe dans le dictionnaire
-' keys : Un tableau de clés à vérifier
-' Retourne : True si la clé existe, False sinon
 Public Function Exists(keys() As Variant) As Boolean
-    Dim i As Integer
-    Dim j As Integer
-    Dim found As Boolean
+    Dim i As Variant
     ' Vérifie si la dimension du dictionnaire a été spécifiée
     If dimension = 0 Then
         Err.Raise 1012, , "Dictionary has not been initialize."
     Else
-        ' Parcourt les collections de clés pour vérifier l'existence de la clé
-        For i = 1 To nKeys(1).count
-            found = True
-            For j = LBound(keys) To UBound(keys)
-                If nKeys(j)(i) <> keys(j) Then
-                    found = False
-                    Exit For
-                End If
-            Next j
-            If found Then
-                Exists = True
-                Exit Function
-            End If
-        Next i
+        ' Utilise la fonction FindKeys pour vérifier l'existence de la clé
+        i = FindKeys(keys)
+        If Not IsNothing(i) Then
+            ' Si les clés existent déjà, retourne True
+            Exists = True
+            Exit Function
+        End If
     End If
     ' Si la clé n'est pas trouvée, retourne False
     Exists = False
 End Function
+
 
 ' Vérifie si une clé est dans une collection
 ' col : La collection à vérifier
@@ -169,8 +188,7 @@ End Function
 ' Supprime une paire cl?-valeur du dictionnaire
 ' keys : Un tableau de cl?s de la paire ? supprimer
 Public Function Remove(keys() As Variant)
-    Dim i, j As Integer
-    Dim hasAllKey As Boolean
+    Dim i As Variant
     Dim Dimen As Collection
     On Error Resume Next
     ' Vérifie si la dimension du dictionnaire a été spécifiée
@@ -181,37 +199,23 @@ Public Function Remove(keys() As Variant)
         If UBound(keys) - LBound(keys) + 1 <> Me.dimension Then
             Err.Raise 1013, , "Number of keys does not match the number of dimensions."
         Else
-            ' Parcourt les collections afin de tester si la valeur est égale à la clé donné en parmaètre
-            'Parcours toutes les clés
-            For i = 1 To nKeys(1).count
-            hasAllKey = True
-            
-            'Parcours toutes les dimensions
-                For j = 1 To Me.dimension
-                    hasAllKey = (IIf(nKeys(j)(i) = keys(j), 1, 0)) * hasAllKey
-                    If hasAllKey = False Then
-                        Exit For
-                    End If
-                Next j
-                'Si on a trouvé toutes les clés alors on retourne la valeur
-                If hasAllKey = True Then
-                    ' Retourne la valeur
-                    values.Remove (i)
-                    For Each Dimen In nKeys
-                        Dimen.Remove (i)
-                    Next
+            ' Utilise la fonction FindKeys pour trouver l'indice des clés
+            i = FindKeys(keys)
+            If Not IsNothing(i) Then
+                ' Si les clés existent déjà, on les supprime
+                values.Remove (i)
+                For Each Dimen In nKeys
+                    Dimen.Remove (i)
+                Next
                 Exit Function
             End If
-            Next i
-
         End If
         ' Si les clés ne sont pas trouvées, lève une erreur
-        If hasAllKey = False Then
-            Err.Raise 1013, , "Keys " & Join(keys, ", ") & " not found in the dictionary."
-        End If
+        Err.Raise 1013, , "Keys " & Join(keys, ", ") & " not found in the dictionary."
     End If
     On Error GoTo 0
 End Function
+
 
 
 
@@ -220,9 +224,7 @@ End Function
 ' keys : Un tableau de clés dont la valeur doit être obtenue
 ' Retourne : La valeur associée aux clés
 Public Function item(keys() As Variant) As Variant
-    Dim i As Integer
-    Dim j As Integer
-    Dim hasAllKey As Boolean
+    Dim i As Variant
     On Error Resume Next
     ' Vérifie si la dimension du dictionnaire a été spécifiée
     If Me.dimension = 0 Then
@@ -232,34 +234,20 @@ Public Function item(keys() As Variant) As Variant
         If UBound(keys) - LBound(keys) + 1 <> Me.dimension Then
             Err.Raise 1013, , "Number of keys does not match the number of dimensions."
         Else
-            ' Parcourt les collections afin de tester si la valeur est égale à la clé donné en parmaètre
-            'Parcours toutes les clés
-            For i = 1 To nKeys(1).count
-            hasAllKey = True
-            
-            'Parcours toutes les dimensions
-                For j = 1 To Me.dimension
-                    hasAllKey = (IIf(nKeys(j)(i) = keys(j), 1, 0)) * hasAllKey
-                    If hasAllKey = False Then
-                        Exit For
-                    End If
-                Next j
-                'Si on a trouvé toutes les clés alors on retourne la valeur
-                If hasAllKey = True Then
-                    ' Retourne la valeur
-                    item = values(i)
+            ' Utilise la fonction FindKeys pour trouver l'indice des clés
+            i = FindKeys(keys)
+            If Not IsNothing(i) Then
+                ' Si les clés existent déjà, on retourne la valeur
+                item = values(i)
                 Exit Function
             End If
-            Next i
-
         End If
         ' Si les clés ne sont pas trouvées, lève une erreur
-        If hasAllKey = False Then
-            Err.Raise 1013, , "Keys " & Join(keys, ", ") & " not found in the dictionary."
-        End If
+        Err.Raise 1013, , "Keys " & Join(keys, ", ") & " not found in the dictionary."
     End If
     On Error GoTo 0
 End Function
+
 
 ' Obtient toutes les valeurs associées à une clé donnée
 ' keys : Un tableau de clés dont les valeurs doivent être obtenues
