@@ -44,14 +44,43 @@ Public Property Get dimension() As Integer
     dimension = pDimension
 End Property
 
+Private Function FindKeys(keys() As Variant) As Variant
+    Dim i As Integer
+    Dim j As Integer
+    Dim hasAllKey As Boolean
+    'Parcours toutes les clés
+    For i = 1 To nKeys(1).count
+        hasAllKey = True
+        'Parcours toutes les dimensions
+        For j = 1 To Me.dimension
+            'Test si la clé fourni est vide ou Nothing
+            If keys(j) <> Nothing Or keys(j) <> "" Then
+                'On calcul si la clé match parmis les nKeys on obtiens "1" sinon "0".
+                'Le produit de ces valeurs permets de faire un "ET" logique et de savoir si toutes les clés match
+                hasAllKey = (IIf(nKeys(j)(i) = keys(j), 1, 0)) * hasAllKey
+                If hasAllKey = False Then
+                    Exit For
+                End If
+            End If
+        Next j
+        'Si on a trouvé toutes les clés alors on renvoie l'indice
+        If hasAllKey Then
+            FindKeys = i
+            Exit Function
+        End If
+    Next i
+    'Si aucune clé n'a été trouvée, on renvoie Nothing
+    FindKeys = Nothing
+End Function
+
+
 ' Ajoute une nouvelle paire clé-valeur au dictionnaire
 ' value : La valeur à ajouter
 ' keys : Un tableau de clés à ajouter
 ' Comportement : Dans le cas ou la clé est déjà présente dans le dictionnaire, pour le moment une erreur est levé, il est possible de "remplacer" la valeur à la place
 Public Sub Add(value As Variant, keys() As Variant)
-    Dim i As Integer
-    Dim j As Integer
-    Dim found As Boolean
+    Dim i, j, k As Integer
+    Dim hasAllKey As Boolean
     ' Vérifie si la dimension du dictionnaire a été spécifiée
     If dimension = 0 Then
         ' Initialise le dictionnaire avec les dimensions de cette première sé
@@ -61,21 +90,25 @@ Public Sub Add(value As Variant, keys() As Variant)
     If UBound(keys) - LBound(keys) + 1 <> dimension Then
         Err.Raise 1013, , "Number of keys does not match the number of dimensions."
     Else
-        ' Vérifie si les clés existent déjà
-        For i = 1 To nKeys(1).count
-            found = True
-            For j = LBound(keys) To UBound(keys)
-                If nKeys(j + 1)(i) <> keys(j) Then
-                    found = False
-                    Exit For
+        'Parcours toutes les clés
+            For i = 1 To nKeys(1).count
+                
+                ' Vérifie si les clés existent déjà
+                i = FindKeys(keys)
+                
+                'Si on a trouvé toutes les clés alors on lance une erreur
+                If i <> Nothing Then
+                    ' Si les clés existent déjà, on remplace la valeur associée
+                    Err.Raise 1014, , "Keys " & Join(keys, ", ") & " already exist in the dictionary."
+                    Exit Sub
+                Else
+                    ' Ajoute les cl?s et la valeur si les cl?s n'existent pas d?j?
+                    For k = LBound(keys) To UBound(keys)
+                        nKeys(i).Add keys(i)
+                    Next k
+                    values.Add value
                 End If
-            Next j
-            If found Then
-                ' Si les clés existent déjà, on remplace la valeur associée
-                values(i) = value
-                Exit Sub
-            End If
-        Next i
+            Next i
         ' Ajoute les clés et la valeur si les clés n'existent pas déjà
         For i = LBound(keys) To UBound(keys)
             nKeys(i).Add keys(i)
@@ -246,22 +279,27 @@ Public Function items(keys() As Variant, Optional keepKey As Boolean = True) As 
     If Me.dimension = 0 Then
         Err.Raise 1012, , "Dictionary has not been initialize."
     Else
-        ' Parcourt les collections afin de tester si la valeur est égale à la clé donné en paramètre
-        'Parcours toutes les clés
-        For i = 1 To nKeys(1).count
-            hasKey = True
-        
+        ' Parcourt les collections afin de tester si la valeur est égale à la clé donné en parmaètre
+            'Parcours toutes les clés
+            For i = 1 To nKeys(1).count
+            hasAllKey = True
+            
             'Parcours toutes les dimensions
-            For j = 1 To UBound(keys) - LBound(keys) + 1
-                hasKey = False
-                For k = 1 To Me.dimension
-                    If nKeys(k)(i) = keys(j) Then
-                        hasKey = True
-                        Exit For
+                For j = 1 To Me.dimension
+                    'Test si la clé fourni est vide ou Nothing
+                    If keys(j) <> Nothing Or keys(j) <> "" Then
+                        'Si la clé n'est pas vide ou empty
+                        'On calcul si la clé match parmis les nKeys on obtiens "1" sinon "0".
+                        'Le produit de ces valeurs permets de faire un "ET" logique et de savoir si toutes les clés match
+                        hasAllKey = (IIf(nKeys(j)(i) = keys(j), 1, 0)) * hasAllKey
+                        If hasAllKey = False Then
+                            Exit For
+                        End If
                     End If
-                Next k
-                If hasKey = False Then
-                    ' Crée un nouveau tableau de clés pour le nouveau dictionnaire
+                Next j
+                'Si on a trouvé toutes les clés alors ajoute la valeur dans le dictionnaire
+                If hasAllKey = True Then
+                    ' Cr?e un nouveau tableau de cl?s pour le nouveau dictionnaire
                     ReDim newKeys(1 To Me.dimension)
                     For l = 1 To Me.dimension
                         If IsEmpty(keys(l)) Then
@@ -272,14 +310,9 @@ Public Function items(keys() As Variant, Optional keepKey As Boolean = True) As 
                     Next l
                     ' Ajoute la valeur au nouveau dictionnaire
                     newDict.Add values(i), newKeys
-                End If
-            Next j
-        Next i
-        
-        ' Si keepKey est False, alors on supprime la clé du nouveau dictionnaire
-        If keepKey = False Then
-            newDict.Remove keys
-        End If
+                Exit Function
+            End If
+            Next i
         
         ' Retourne le nouveau dictionnaire
         Set items = newDict
