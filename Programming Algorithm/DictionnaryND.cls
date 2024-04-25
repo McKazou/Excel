@@ -71,7 +71,8 @@ Public Sub Add(value As Variant, keys() As Variant)
                 End If
             Next j
             If found Then
-                Err.Raise 1014, , "Keys " & Join(keys, ", ") & " already exist in the dictionary."
+                ' Si les clés existent déjà, on remplace la valeur associée
+                values(i) = value
                 Exit Sub
             End If
         Next i
@@ -82,6 +83,7 @@ Public Sub Add(value As Variant, keys() As Variant)
         values.Add value
     End If
 End Sub
+
 
 
 
@@ -233,49 +235,58 @@ End Function
 Public Function items(keys() As Variant, Optional keepKey As Boolean = True) As DictionnaryND
     Dim i As Integer
     Dim j As Integer
+    Dim k As Integer
+    Dim l As Integer
     Dim hasKey As Boolean
-    Dim newDict As New DictionnaryND
+    Dim newKeys() As Variant
+    Dim newDict As DictionnaryND
+    Set newDict = New DictionnaryND
     
     ' Vérifie si la dimension du dictionnaire a été spécifiée
     If Me.dimension = 0 Then
         Err.Raise 1012, , "Dictionary has not been initialize."
     Else
-        ' Vérifie si le nombre de clés correspond au nombre de dimensions
-        If UBound(keys) - LBound(keys) + 1 <> Me.dimension Then
-            Err.Raise 1013, , "Number of keys does not match the number of dimensions."
-        Else
-            ' Parcourt les collections afin de tester si la valeur est égale à la clé donné en paramètre
-            'Parcours toutes les clés
-            For i = 1 To nKeys(1).count
-                hasKey = True
+        ' Parcourt les collections afin de tester si la valeur est égale à la clé donné en paramètre
+        'Parcours toutes les clés
+        For i = 1 To nKeys(1).count
+            hasKey = True
         
-                'Parcours toutes les dimensions
-                For j = 1 To Me.dimension
-                    If nKeys(j)(i) = keys(j) Then
+            'Parcours toutes les dimensions
+            For j = 1 To UBound(keys) - LBound(keys) + 1
+                hasKey = False
+                For k = 1 To Me.dimension
+                    If nKeys(k)(i) = keys(j) Then
                         hasKey = True
-                    Else
-                        hasKey = False
                         Exit For
                     End If
-                Next j
-        
-                'Si on a trouvé la clé alors on ajoute la valeur au nouveau dictionnaire
-                If hasKey = True Then
+                Next k
+                If hasKey = False Then
+                    ' Crée un nouveau tableau de clés pour le nouveau dictionnaire
+                    ReDim newKeys(1 To Me.dimension)
+                    For l = 1 To Me.dimension
+                        If IsEmpty(keys(l)) Then
+                            newKeys(l) = nKeys(l)(i)
+                        Else
+                            newKeys(l) = keys(l)
+                        End If
+                    Next l
                     ' Ajoute la valeur au nouveau dictionnaire
-                    newDict.Add values(i), keys
+                    newDict.Add values(i), newKeys
                 End If
-            Next i
+            Next j
+        Next i
         
-            ' Si keepKey est False, alors on supprime la clé du nouveau dictionnaire
-            If keepKey = False Then
-                newDict.Remove keys
-            End If
-        
-            ' Retourne le nouveau dictionnaire
-            Set items = newDict
+        ' Si keepKey est False, alors on supprime la clé du nouveau dictionnaire
+        If keepKey = False Then
+            newDict.Remove keys
         End If
+        
+        ' Retourne le nouveau dictionnaire
+        Set items = newDict
     End If
 End Function
+
+
 
 
 ' Crée un tableau 2D à partir du dictionnaire
@@ -389,10 +400,11 @@ Sub Test()
     Next i
     
     Dim slice As DictionnaryND
-
     keys(2) = Empty
     Set slice = dictFromArray.items(keys) ' doesn't return the dict
     arr3 = slice.toArray
+    
+    MsgBox "End of test"
     
 End Sub
 
