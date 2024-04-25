@@ -234,8 +234,7 @@ Public Function items(keys() As Variant, Optional keepKey As Boolean = True) As 
     Dim i As Integer
     Dim j As Integer
     Dim hasKey As Boolean
-    Dim newDict As DictionnaryND
-    Set newDict = New DictionnaryND
+    Dim newDict As New DictionnaryND
     
     ' Vérifie si la dimension du dictionnaire a été spécifiée
     If Me.dimension = 0 Then
@@ -392,7 +391,7 @@ Sub Test()
     Dim slice As DictionnaryND
 
     keys(2) = Empty
-    Set slice = dictFromArray.items(keys)
+    Set slice = dictFromArray.items(keys) ' doesn't return the dict
     arr3 = slice.toArray
     
 End Sub
