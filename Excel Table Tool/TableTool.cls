@@ -8,68 +8,124 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 ' Classe TableTool
-Public DEFAULT_TABLE_CALCULATION_DATABASE_NAME As String
-Private pRange As Range ' Emplacement du tableau
+Private pWorkbook As Workbook ' Classeur contenant le tableau
+Private pWorksheet As Worksheet ' Feuille de calcul contenant le tableau
+Private pRange() As Variant ' Emplacement du tableau
 Private pHeaders As Collection ' Liste des en-têtes
-Private pMasterKeyColumn As Collection ' Valeurs de la première colonne
-Private CoreRange As Range ' "Cœur" du tableau
+Private pmasterKeyColumn As Collection ' Valeurs de la première colonne
+Private coreRange() As Variant ' "Cœur" du tableau
 Private masterKeyNames As Variant ' Noms possibles pour la MasterKeyColumn
 
 ' Initialisation de la classe
 Private Sub Class_Initialize()
-    DEFAULT_TABLE_CALCULATION_DATABASE_NAME = "Table_Functions_List"
     Set pHeaders = New Collection
     Set masterKeyColumn = New Collection
     masterKeyNames = Array("iD", "Input_Name", "Name", "Path", "FolderPath", "Parameter Type")
 End Sub
 
-' Propriété pour obtenir ou définir l'emplacement du tableau
-Public Property Get Range() As Range
-    Set Range = pRange
-End Property
-Public Property Set Range(value As Range)
-    Set pRange = value
-End Property
 
-' Propriété pour obtenir ou définir les en-têtes
-Public Property Get Headers() As Collection
-    Set Headers = pHeaders
-End Property
-Public Property Set Headers(value As Collection)
-    Set pHeaders = value
-End Property
+' Fonction pour rechercher une valeur dans le tableau
+Public Function search(valueToSearch As Variant, inArray As String) As tableTool
+    Dim i As Long
+    Dim j As Long
+    Dim searchTable As New tableTool
+    Dim found As Boolean
 
-' Propriété pour obtenir ou définir les valeurs de la première colonne
-Public Property Get masterKeyColumn() As Collection
-    Set masterKeyColumn = pMasterKeyColumn
-End Property
-Public Property Set masterKeyColumn(value As Collection)
-    Set pMasterKeyColumn = value
-End Property
+    ' Rechercher inArray dans les en-têtes
+    For i = 1 To pHeaders.count
+        If pHeaders(i) = inArray Then
+            ' Si inArray est trouvé, rechercher valueToSearch dans la colonne correspondante
+            For j = 1 To masterKeyColumn.count
+                If pRange(j + 1, i).value = valueToSearch Then
+                    ' Si valueToSearch est trouvé, ajouter la ligne entière à searchTable
+                    'searchTable.Range = pRange(j + 1)
+                    'searchTable.Headers (pHeaders)
+                    'searchTable.masterKeyColumn.Add masterKeyColumn(j)
+                    found = True
+                    Exit For
+                End If
+            Next j
+        End If
+        If found Then Exit For
+    Next i
+
+    ' Si inArray n'est pas trouvé dans les en-têtes, rechercher dans la MasterKeyColumn
+    If Not found Then
+        For i = 1 To masterKeyColumn.count
+            If masterKeyColumn(i) = inArray Then
+                ' Si inArray est trouvé, rechercher valueToSearch dans la ligne correspondante
+                For j = 1 To pHeaders.count
+                    If pRange(i + 1, j).value = valueToSearch Then
+                        ' Si valueToSearch est trouvé, ajouter la colonne entière à searchTable
+                        'searchTable.Range = pRange(j)
+                        'searchTable.Headers.Add pHeaders(j)
+                        'searchTable.masterKeyColumn = masterKeyColumn
+                        found = True
+                        Exit For
+                    End If
+                Next j
+            End If
+            If found Then Exit For
+        Next i
+    End If
+
+    ' Si inArray n'est pas trouvé ni dans les en-têtes ni dans la MasterKeyColumn, lever une erreur
+    If Not found Then
+        Err.Raise 1016, , "La valeur " & inArray & " n'a pas été trouvée dans le tableau."
+    End If
+
+    ' Retourner le nouvel objet TableTool
+    Set search = searchTable
+End Function
+
 
 ' Fonction pour obtenir un tableau à partir de son nom
-Public Function getTableFromName(tableName As String)
+Public Function fromName(tableName As String, Optional Workbook As Workbook = Nothing, Optional sheet As Worksheet = Nothing)
     Dim ws As Worksheet
     Dim tbl As ListObject
 
-    ' Parcourir tous les tableaux de tous les feuilles de calcul
-    For Each ws In ThisWorkbook.Worksheets
-        For Each tbl In ws.ListObjects
+    ' Si aucun classeur n'est spécifié, utiliser le classeur actif
+    If Workbook Is Nothing Then
+        Set pWorkbook = ThisWorkbook
+    Else
+        Set pWorkbook = Workbook
+    End If
+
+    ' Si aucune feuille de calcul n'est spécifiée, utiliser toutes les feuilles de calcul du classeur
+    If sheet Is Nothing Then
+        ' Parcourir tous les tableaux de toutes les feuilles de calcul
+        For Each ws In pWorkbook.Worksheets
+            For Each tbl In ws.ListObjects
+                ' Si le nom du tableau correspond à tableName
+                If tbl.name = tableName Then
+                    ' Mettre à jour les propriétés de l'objet
+                    Set pWorksheet = ws
+                    pRange = tbl.Range.value
+                    updateTable tbl
+                    Exit Function
+                End If
+            Next tbl
+        Next ws
+    Else
+        ' Parcourir tous les tableaux de la feuille de calcul spécifiée
+        Set pWorksheet = sheet
+        For Each tbl In pWorksheet.ListObjects
             ' Si le nom du tableau correspond à tableName
             If tbl.name = tableName Then
                 ' Mettre à jour les propriétés de l'objet
-                Set pRange = tbl.Range
+                pRange = tbl.Range.value
                 updateTable tbl
                 Exit Function
             End If
         Next tbl
-    Next ws
+    End If
 
     ' Si aucun tableau correspondant n'est trouvé, lever une erreur
     Err.Raise 1012, , "Table " & tableName & " not found in the workbook."
 End Function
 
-' Fonction pour mettre à jour les propriétés de l'objet
+
+'' Fonction pour mettre à jour les propriétés de l'objet
 Private Sub updateTable(tbl As ListObject)
     Dim i As Long
     Dim j As Long
@@ -109,7 +165,7 @@ Private Sub updateTable(tbl As ListObject)
     Next i
 
     ' Mettre à jour le "cœur" du tableau
-    Set CoreRange = tbl.Range.Offset(1, masterKeyIndex).Resize(tbl.Range.Rows.count - 1, tbl.Range.Columns.count - masterKeyIndex)
+    coreRange = tbl.Range.Offset(1, masterKeyIndex).Resize(tbl.Range.Rows.count - 1, tbl.Range.Columns.count - masterKeyIndex).value
 End Sub
 
 
@@ -154,7 +210,7 @@ Public Sub replaceValues(newValues As Variant, columnNames As Variant, rowValues
                 If IsEmpty(rowValues) Or IsInArray(masterKeyColumn(j), rowValues) Then
                     rowIndex = j
                     ' Remplacer la valeur à l'intersection de la colonne et de la ligne par newValues
-                    pRange.Cells(rowIndex + 1, colIndex).value = newValues(replaceCount + 1)
+                    pRange(rowIndex + 1, colIndex) = newValues(replaceCount + 1)
                     replaceCount = replaceCount + 1
                 End If
             Next j
@@ -163,14 +219,15 @@ Public Sub replaceValues(newValues As Variant, columnNames As Variant, rowValues
 End Sub
 
 
+
 ' Fonction pour extraire certaines lignes et/ou colonnes du tableau
-Public Function extract(columnNames As Variant, Optional rowValues As Variant, Optional withHeader As Boolean = False, Optional includeMasterKey As Boolean = False) As TableTool
+Public Function extract(columnNames As Variant, Optional rowValues As Variant, Optional withHeader As Boolean = False, Optional includeMasterKey As Boolean = False) As tableTool
     Dim i As Long
     Dim j As Long
     Dim k As Long
     Dim colIndex As Variant
     Dim rowIndex As Variant
-    Dim extractTable As New TableTool
+    Dim extractTable As New tableTool
 
     ' Parcourir toutes les colonnes du tableau
     For i = 1 To pHeaders.count
@@ -183,7 +240,7 @@ Public Function extract(columnNames As Variant, Optional rowValues As Variant, O
                 If IsEmpty(rowValues) Or IsInArray(masterKeyColumn(j), rowValues) Then
                     rowIndex = j
                     ' Ajouter la valeur à l'intersection de la colonne et de la ligne au nouvel objet TableTool
-                    extractTable.Range.Cells(rowIndex + 1, colIndex).value = pRange.Cells(rowIndex + 1, colIndex).value
+                    extractTable.Range(rowIndex + 1, colIndex) = pRange(rowIndex + 1, colIndex)
                 End If
             Next j
             ' Ajouter l'en-tête de la colonne au nouvel objet TableTool, si withHeader est True
@@ -204,61 +261,6 @@ Public Function extract(columnNames As Variant, Optional rowValues As Variant, O
     Set extract = extractTable
 End Function
 
-' Fonction pour rechercher une valeur dans le tableau
-Public Function search(valueToSearch As Variant, inArray As String) As TableTool
-    Dim i As Long
-    Dim j As Long
-    Dim searchTable As New TableTool
-    Dim found As Boolean
-
-    ' Rechercher inArray dans les en-têtes
-    For i = 1 To pHeaders.count
-        If pHeaders(i) = inArray Then
-            ' Si inArray est trouvé, rechercher valueToSearch dans la colonne correspondante
-            For j = 1 To masterKeyColumn.count
-                If pRange.Cells(j + 1, i).value = valueToSearch Then
-                    ' Si valueToSearch est trouvé, ajouter la ligne entière à searchTable
-                    searchTable.Range = pRange.Rows(j + 1)
-                    searchTable.Headers = pHeaders
-                    searchTable.masterKeyColumn.Add masterKeyColumn(j)
-                    found = True
-                    Exit For
-                End If
-            Next j
-        End If
-        If found Then Exit For
-    Next i
-
-    ' Si inArray n'est pas trouvé dans les en-têtes, rechercher dans la MasterKeyColumn
-    If Not found Then
-        For i = 1 To masterKeyColumn.count
-            If masterKeyColumn(i) = inArray Then
-                ' Si inArray est trouvé, rechercher valueToSearch dans la ligne correspondante
-                For j = 1 To pHeaders.count
-                    If pRange.Cells(i + 1, j).value = valueToSearch Then
-                        ' Si valueToSearch est trouvé, ajouter la colonne entière à searchTable
-                        searchTable.Range = pRange.Columns(j)
-                        searchTable.Headers.Add pHeaders(j)
-                        searchTable.masterKeyColumn = masterKeyColumn
-                        found = True
-                        Exit For
-                    End If
-                Next j
-            End If
-            If found Then Exit For
-        Next i
-    End If
-
-    ' Si inArray n'est pas trouvé ni dans les en-têtes ni dans la MasterKeyColumn, lever une erreur
-    If Not found Then
-        Err.Raise 1016, , "La valeur " & inArray & " n'a pas été trouvée dans le tableau."
-    End If
-
-    ' Retourner le nouvel objet TableTool
-    Set search = searchTable
-End Function
-
-
 ' Fonction pour vérifier si une valeur est dans un tableau
 Private Function IsInArray(value As Variant, arr As Variant) As Boolean
     Dim i As Long
@@ -272,3 +274,26 @@ Private Function IsInArray(value As Variant, arr As Variant) As Boolean
 End Function
 
 
+' Propriété pour obtenir ou définir l'emplacement du tableau
+Public Property Get Range() As Variant
+    Range = pRange
+End Property
+Public Property Set Range(value As Range)
+    pRange = value.value
+End Property
+
+' Propriété pour obtenir ou définir les en-têtes
+Public Property Get Headers() As Collection
+    Set Headers = pHeaders
+End Property
+Public Property Set Headers(value As Collection)
+    Set pHeaders = value
+End Property
+
+' Propriété pour obtenir ou définir les valeurs de la première colonne
+Public Property Get masterKeyColumn() As Collection
+    Set masterKeyColumn = pmasterKeyColumn
+End Property
+Public Property Set masterKeyColumn(value As Collection)
+    Set pmasterKeyColumn = value
+End Property
