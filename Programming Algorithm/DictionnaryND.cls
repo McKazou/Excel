@@ -8,6 +8,10 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
 Option Explicit
+'This whole class is to have a multi dimensionnal Dictionnary
+'It could have been done using recursive dictionnary
+'It also could have been done by "merging" keys together to get one key
+'Bilan => could have avoided all this ...
 
 Private nKeys As Collection ' Collection pour stocker les collections de clés
 Private pValues As Collection ' Collection pour stocker les valeurs
@@ -216,13 +220,13 @@ Public Function equal(dict2 As DictionnaryND) As Boolean
 
     ' Vérifie si les deux dictionnaires ont la même dimension
     If Me.dimension <> dict2.dimension Then
-        AreDictionariesIdentical = False
+        equal = False
         Exit Function
     End If
 
     ' Vérifie si les deux dictionnaires ont le même nombre de clés
     If Me.Count <> dict2.Count Then
-        AreDictionariesIdentical = False
+        equal = False
         Exit Function
     End If
 
@@ -306,9 +310,9 @@ End Function
 ' keys :            Un tableau de clés dont les valeurs doivent être obtenues
 ' keepKey :         Un paramètre optionnel pour déterminer si la clé doit être conservée dans le nouveau dictionnaire
 ' Retourne :        Un objet DictionnaryND contenant les valeurs associées aux clés
-Public Function items(Keys() As Variant, Optional keepKey As Boolean = True) As DictionnaryND
+Public Function items(Keys() As Variant, Optional keepKey As Boolean = False) As DictionnaryND
     Dim i As Variant
-    Dim l As Integer
+    Dim j, k As Integer
     Dim newKeys() As Variant
     Dim newDict As New DictionnaryND
     Dim indices As Collection
@@ -317,26 +321,45 @@ Public Function items(Keys() As Variant, Optional keepKey As Boolean = True) As 
     If Me.dimension = 0 Then
         Err.Raise 1012, , "Dictionary has not been initialize."
     Else
-        ' Utilise la fonction FindAllKeys pour trouver tous les indices des clés
-        Set indices = FindAllKeys(Keys)
-        ' Parcourt tous les indices trouvés
-        For Each i In indices
-            ' Crée un nouveau tableau de clés pour le nouveau dictionnaire
-            ReDim newKeys(1 To Me.dimension)
-            For l = 1 To Me.dimension
-                If IsEmpty(Keys(l)) Then
-                    newKeys(l) = nKeys(l)(i)
+        ' Vérifie si le nombre de clés correspond au nombre de dimensions
+        If UBound(Keys) - LBound(Keys) + 1 <> Me.dimension Then
+            Err.Raise 1013, , "Number of keys does not match the number of dimensions."
+        Else
+
+            ' Utilise la fonction FindAllKeys pour trouver tous les indices des clés
+            Set indices = FindAllKeys(Keys)
+            ' Parcourt tous les indices trouvés
+            For Each i In indices
+                k = 1
+                ' Crée un nouveau tableau de clés pour le nouveau dictionnaire
+                If keepKey Then
+                     ReDim newKeys(1 To Me.dimension)
                 Else
-                    newKeys(l) = Keys(l)
+                    ReDim newKeys(1 To Me.dimension - 1)
                 End If
-            Next l
-            ' Ajoute la valeur au nouveau dictionnaire
-            newDict.Add pValues(i), newKeys
-        Next i
+                
+                For j = 1 To Me.dimension
+                    If Keys(j) = "" Then
+                        newKeys(k) = nKeys(j)(i)
+                        k = k + 1
+                    Else
+                        If keepKey Then
+                            newKeys(k) = nKeys(j)(i)
+                            k = k + 1
+                        Else
+                            'skip this one
+                        End If
+                    End If
+                Next j
+                ' Ajoute la valeur au nouveau dictionnaire
+                newDict.Add pValues(i), newKeys
+            Next i
+        End If
     End If
     ' Retourne le nouveau dictionnaire
     Set items = newDict
 End Function
+
 
 
 
@@ -404,8 +427,8 @@ Sub Test()
     ' Ajoute des paires clé-valeur au dictionnaire
     For i = 1 To 3
         For j = 1 To 3
-            Keys(1) = "Key1_" & i & j
-            Keys(2) = "Key2_" & i & j
+            Keys(1) = "Key1_" & i
+            Keys(2) = "Key2_" & j
             value = "Value_" & i & j
             dict.Add value, Keys
         Next j
@@ -431,8 +454,8 @@ Sub Test()
     '-------------------------------------------
     
     ' Supprime des paires clé-valeur du dictionnaire
-    Keys(1) = "Key1_" & 1 & "1"
-    Keys(2) = "Key2_" & 1 & "1"
+    Keys(1) = "Key1_" & 1
+    Keys(2) = "Key2_" & 1
     dict.Remove Keys
     
     If dict.Exists(Keys) Then
@@ -472,7 +495,7 @@ Sub Test()
     'Verification we did get a slice of the dictionnary : Valid function 'items'
     '-------------------------------------------
     Dim slice As DictionnaryND
-    Keys(1) = "Key1_" & 1 & "2"
+    Keys(1) = "Key1_1"
     Keys(2) = ""
     Set slice = dictFromArray.items(Keys) ' doesn't return the dict
     arr3 = slice.toArray
