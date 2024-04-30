@@ -1,0 +1,20 @@
+let
+    Source = Excel.CurrentWorkbook(),
+    columnName = "Name",
+    recursivefunction = (tableName as text, depth as number) as any =>
+        let
+            CurrentTable = try Source{[Name=tableName]}[Content] otherwise null,
+            ApplyFunction = if CurrentTable is null or depth = 0 then
+                #table({columnName, "Depth"}, {{tableName, depth}})
+            else
+                let
+                    CurrentRow = #table({columnName, "Depth"}, {{tableName, depth}}),
+                    RecursiveTable = Table.TransformColumns(CurrentTable, {{columnName, each recursivefunction(_, depth - 1), type table}}),
+                    ExpandedTable = Table.ExpandTableColumn(RecursiveTable, columnName, {columnName, "Depth"}),
+                    ResultTable = Table.Combine({CurrentRow, ExpandedTable})
+                in
+                    ResultTable
+        in
+            ApplyFunction
+in
+    recursivefunction
