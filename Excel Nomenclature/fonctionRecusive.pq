@@ -12,13 +12,15 @@ let
                 depth = row[Depth],
                 name = row[Name],
                 qty = row[Qty],
-                branchQty = row[BranchQty],
+                // Vérification de l'existence de la colonne 'BranchQty' et création si nécessaire
+                branchQty = row[BranchQty]*qty,
+                
                 
                 // Récupération du tableau correspondant au nom dans le classeur source
                 currentTable = try source{[Name=name]}[Content] otherwise null,
                 
                 // Création d'un tableau avec la ligne actuelle
-                currentRowTable = #table({"id", "Name", "Qty", "Depth", "BranchQty"}, {{row[id], row[Name], row[Qty], row[Depth], row[BranchQty]}}),
+                currentRowTable = #table({"id", "Name", "Qty", "Depth", "BranchQty"}, {{row[id], row[Name], row[Qty], row[Depth], row[BranchQty] }}),
                 
                 // Si le tableau actuel existe et que la profondeur est supérieure à 0, on continue la récursion
                 newTable = if currentTable <> null and depth > 0 then
@@ -28,7 +30,7 @@ let
                         
                         // Ajout de la colonne "BranchQty" avec la quantité multipliée par la quantité de la ligne actuelle
                         // Vérification si "Qty" est un nombre avant de tenter de le multiplier
-                        addedQty = Table.AddColumn(addedDepth, "BranchQty", each 5),
+                        addedQty = Table.AddColumn(addedDepth, "BranchQty", each branchQty*qty ),
                         
                         // Appel récursif de la fonction avec le nouveau tableau
                         recursionResult = AssemblyRecursion(addedQty,source)
