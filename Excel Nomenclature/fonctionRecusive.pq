@@ -17,7 +17,7 @@ let
                 currentTable = try source{[Name=name]}[Content] otherwise null,
                 
                 // Création d'un tableau avec la ligne actuelle
-                currentRowTable = #table({"id", "Name", "Qty", "Depth", "Qty for this branch"}, {{row[id], row[Name], row[Qty], row[Depth], qty}}),
+                currentRowTable = #table({"id", "Name", "Qty", "Depth", "BranchQty"}, {{row[id], row[Name], row[Qty], row[Depth], qty}}),
                 
                 // Si le tableau actuel existe et que la profondeur est supérieure à 0, on continue la récursion
                 newTable = if currentTable <> null and depth > 0 then
@@ -26,7 +26,7 @@ let
                         addedDepth = Table.AddColumn(currentTable, "Depth", each depth - 1),
                         
                         // Ajout de la colonne "Qty for this branch" avec la quantité multipliée par la quantité de la ligne actuelle
-                        addedQty = Table.AddColumn(addedDepth, "Qty for this branch", each [Qty] * qty),
+                        addedQty = Table.AddColumn(addedDepth, "BranchQty", each [Qty] * qty),
                         
                         // Appel récursif de la fonction avec le nouveau tableau
                         recursionResult = AssemblyRecursion(addedQty,source)
@@ -38,10 +38,10 @@ let
                     currentRowTable
             in
                 // Si le nouveau tableau n'est pas null, on le retourne, sinon on retourne un tableau vide
-                if newTable <> null then newTable else #table(type table [id=text, Name=text, Qty=number, Depth=number, "Qty for this branch"=number], {})
+                if newTable <> null then newTable else #table(type table [id=text, Name=text, Qty=number, Depth=number, BranchQty=number], {})
     in
         // Accumulation des résultats de processRow pour chaque enregistrement du tableau résultat dans un tableau d'état
-        List.Accumulate(Table.ToRecords(result), #table(type table [id=text, Name=text, Qty=number, Depth=number, "Qty for this branch"=number], {}), (state, current) => Table.Combine({state, processRow(current)}))
+        List.Accumulate(Table.ToRecords(result), #table(type table [id=text, Name=text, Qty=number, Depth=number, BranchQty=number], {}), (state, current) => Table.Combine({state, processRow(current)}))
 in
     // Retour de la fonction AssemblyRecursion
     AssemblyRecursion
