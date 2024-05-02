@@ -29,7 +29,7 @@ let
                         addedDepth = Table.AddColumn(currentTable, "Depth", each depth - 1),
                         
                         // Ajout de la colonne "BranchQty" avec la quantité multipliée par la quantité de la ligne actuelle
-                        addedQty = Table.AddColumn(addedDepth, "BranchQty", each if [Qty] is number then branchQty*[Qty] else branchQty ),
+                        addedQty = Table.AddColumn(addedDepth, "BranchQty", each if Type.Is(Value.Type([Qty]), Text.Type) then "#Text" else if [Qty] is number then branchQty*[Qty] else branchQty),
                         
                         // Appel récursif de la fonction avec le nouveau tableau
                         recursionResult = AssemblyRecursion(addedQty,source)
