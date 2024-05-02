@@ -1,32 +1,47 @@
 let
-    // Récupère le classeur Excel actuel
-    Source = Excel.CurrentWorkbook(),
-    // Définit le nom de la colonne
-    columnName = "Name",
-    // Définit la fonction récursive
-    recursivefunction = (tableName as text, depth as number) as any =>
-        let
-            // Essaye de récupérer la table avec le nom donné, sinon retourne null
-            CurrentTable = try Source{[Name=tableName]}[Content] otherwise null,
-            // Si la table n'existe pas ou si la profondeur est de 0, retourne une table avec le nom et la profondeur
-            ApplyFunction = if CurrentTable is null or depth = 0 then
-                #table({columnName, "Depth"}, {{tableName, depth}})
-            else
-                let
-                    // Crée une ligne avec le nom et la profondeur
-                    CurrentRow = #table({columnName, "Depth"}, {{tableName, depth}}),
-                    // Transforme la colonne "Name" en appelant récursivement la fonction avec le nom et la profondeur - 1
-                    RecursiveTable = Table.TransformColumns(CurrentTable, {{columnName, each recursivefunction(_, depth - 1), type table}}),
-                    // Étend la colonne "Name" pour inclure les colonnes "Name" et "Depth" de la table récursive
-                    ExpandedTable = Table.ExpandTableColumn(RecursiveTable, columnName, {columnName, "Depth"}),
-                    // Combine la ligne courante et la table étendue
-                    ResultTable = Table.Combine({CurrentRow, ExpandedTable})
-                in
-                    // Retourne la table résultante
-                    ResultTable
-        in
-            // Applique la fonction
-            ApplyFunction
+    // Définition de la fonction récursive AssemblyRecursion
+    AssemblyRecursion = (inputTable as table, source as table) as table =>
+    let
+        // Mise en mémoire tampon du tableau d'entrée pour éviter les modifications pendant l'exécution
+        result = Table.Buffer(inputTable),
+        
+        // Définition de la fonction processRow qui traite une ligne du tableau
+        processRow = (row as record) as table =>
+            let
+                // Récupération des valeurs de la ligne actuelle
+                depth = row[Depth],
+                name = row[Name],
+                qty = row[Qty],
+                
+                // Récupération du tableau correspondant au nom dans le classeur source
+                currentTable = try source{[Name=name]}[Content] otherwise null,
+                
+                // Création d'un tableau avec la ligne actuelle
+                currentRowTable = #table({"id", "Name", "Qty", "Depth", "Qty for this branch"}, {{row[id], row[Name], row[Qty], row[Depth], qty}}),
+                
+                // Si le tableau actuel existe et que la profondeur est supérieure à 0, on continue la récursion
+                newTable = if currentTable <> null and depth > 0 then
+                    let
+                        // Ajout de la colonne "Depth" avec la profondeur diminuée de 1
+                        addedDepth = Table.AddColumn(currentTable, "Depth", each depth - 1),
+                        
+                        // Ajout de la colonne "Qty for this branch" avec la quantité multipliée par la quantité de la ligne actuelle
+                        addedQty = Table.AddColumn(addedDepth, "Qty for this branch", each [Qty] * qty),
+                        
+                        // Appel récursif de la fonction avec le nouveau tableau
+                        recursionResult = AssemblyRecursion(addedQty,source)
+                    in
+                        // Combinaison du tableau de la ligne actuelle et du résultat de la récursion
+                        Table.Combine({currentRowTable, recursionResult})
+                else
+                    // Si le tableau actuel n'existe pas ou que la profondeur est égale à 0, on retourne le tableau de la ligne actuelle
+                    currentRowTable
+            in
+                // Si le nouveau tableau n'est pas null, on le retourne, sinon on retourne un tableau vide
+                if newTable <> null then newTable else #table(type table [id=text, Name=text, Qty=number, Depth=number, "Qty for this branch"=number], {})
+    in
+        // Accumulation des résultats de processRow pour chaque enregistrement du tableau résultat dans un tableau d'état
+        List.Accumulate(Table.ToRecords(result), #table(type table [id=text, Name=text, Qty=number, Depth=number, "Qty for this branch"=number], {}), (state, current) => Table.Combine({state, processRow(current)}))
 in
-    // Retourne la fonction récursive
-    recursivefunction
+    // Retour de la fonction AssemblyRecursion
+    AssemblyRecursion
