@@ -13,7 +13,7 @@ let
                 name = row[Name],
                 qty = row[Qty],
                 // Vérification de l'existence de la colonne 'BranchQty' et création si nécessaire
-                branchQty = row[BranchQty]*qty,
+                branchQty = row[BranchQty],
                 
                 
                 // Récupération du tableau correspondant au nom dans le classeur source
@@ -29,8 +29,7 @@ let
                         addedDepth = Table.AddColumn(currentTable, "Depth", each depth - 1),
                         
                         // Ajout de la colonne "BranchQty" avec la quantité multipliée par la quantité de la ligne actuelle
-                        // Vérification si "Qty" est un nombre avant de tenter de le multiplier
-                        addedQty = Table.AddColumn(addedDepth, "BranchQty", each branchQty*qty ),
+                        addedQty = Table.AddColumn(addedDepth, "BranchQty", each if [Qty] is number then branchQty*[Qty] else branchQty ),
                         
                         // Appel récursif de la fonction avec le nouveau tableau
                         recursionResult = AssemblyRecursion(addedQty,source)
