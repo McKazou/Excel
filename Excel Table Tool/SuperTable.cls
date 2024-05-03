@@ -2,7 +2,7 @@ VERSION 1.0 CLASS
 BEGIN
   MultiUse = -1  'True
 END
-Attribute VB_Name = "TableTool"
+Attribute VB_Name = "SuperTable"
 Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
@@ -25,17 +25,17 @@ End Sub
 
 
 ' Fonction pour rechercher une valeur dans le tableau
-Public Function search(valueToSearch As Variant, inArray As String) As tableTool
+Public Function search(valueToSearch As Variant, inArray As String) As TableTool
     Dim i As Long
     Dim j As Long
-    Dim searchTable As New tableTool
+    Dim searchTable As New TableTool
     Dim found As Boolean
 
     ' Rechercher inArray dans les en-têtes
-    For i = 1 To pHeaders.count
+    For i = 1 To pHeaders.Count
         If pHeaders(i) = inArray Then
             ' Si inArray est trouvé, rechercher valueToSearch dans la colonne correspondante
-            For j = 1 To masterKeyColumn.count
+            For j = 1 To masterKeyColumn.Count
                 If pRange(j + 1, i).value = valueToSearch Then
                     ' Si valueToSearch est trouvé, ajouter la ligne entière à searchTable
                     'searchTable.Range = pRange(j + 1)
@@ -51,10 +51,10 @@ Public Function search(valueToSearch As Variant, inArray As String) As tableTool
 
     ' Si inArray n'est pas trouvé dans les en-têtes, rechercher dans la MasterKeyColumn
     If Not found Then
-        For i = 1 To masterKeyColumn.count
+        For i = 1 To masterKeyColumn.Count
             If masterKeyColumn(i) = inArray Then
                 ' Si inArray est trouvé, rechercher valueToSearch dans la ligne correspondante
-                For j = 1 To pHeaders.count
+                For j = 1 To pHeaders.Count
                     If pRange(i + 1, j).value = valueToSearch Then
                         ' Si valueToSearch est trouvé, ajouter la colonne entière à searchTable
                         'searchTable.Range = pRange(j)
@@ -80,7 +80,7 @@ End Function
 
 
 ' Fonction pour obtenir un tableau à partir de son nom
-Public Function fromName(tableName As String, Optional Workbook As Workbook = Nothing, Optional sheet As Worksheet = Nothing)
+Public Function fromName(TableName As String, Optional Workbook As Workbook = Nothing, Optional sheet As Worksheet = Nothing)
     Dim ws As Worksheet
     Dim tbl As ListObject
 
@@ -97,7 +97,7 @@ Public Function fromName(tableName As String, Optional Workbook As Workbook = No
         For Each ws In pWorkbook.Worksheets
             For Each tbl In ws.ListObjects
                 ' Si le nom du tableau correspond à tableName
-                If tbl.name = tableName Then
+                If tbl.Name = TableName Then
                     ' Mettre à jour les propriétés de l'objet
                     Set pWorksheet = ws
                     pRange = tbl.Range.value
@@ -111,7 +111,7 @@ Public Function fromName(tableName As String, Optional Workbook As Workbook = No
         Set pWorksheet = sheet
         For Each tbl In pWorksheet.ListObjects
             ' Si le nom du tableau correspond à tableName
-            If tbl.name = tableName Then
+            If tbl.Name = TableName Then
                 ' Mettre à jour les propriétés de l'objet
                 pRange = tbl.Range.value
                 updateTable tbl
@@ -121,7 +121,7 @@ Public Function fromName(tableName As String, Optional Workbook As Workbook = No
     End If
 
     ' Si aucun tableau correspondant n'est trouvé, lever une erreur
-    Err.Raise 1012, , "Table " & tableName & " not found in the workbook."
+    Err.Raise 1012, , "Table " & TableName & " not found in the workbook."
 End Function
 
 
@@ -140,7 +140,7 @@ Private Sub updateTable(tbl As ListObject)
 
     ' Identifier la MasterKeyColumn
     masterKeyCount = 0
-    For i = 1 To pHeaders.count
+    For i = 1 To pHeaders.Count
         For j = LBound(masterKeyNames) To UBound(masterKeyNames)
             If pHeaders(i) = masterKeyNames(j) Then
                 masterKeyIndex = i
@@ -151,8 +151,8 @@ Private Sub updateTable(tbl As ListObject)
 
     ' Si aucun nom de MasterKeyColumn n'est trouvé, utiliser la première colonne par défaut
     If masterKeyCount = 0 Then
-        MsgBox "Aucun nom dans la liste des noms autorisés n'a été trouvé pour le tableau " & tbl.name & ". La première colonne sera utilisée par défaut."
-        Application.StatusBar = "[TableTool]{updateTable} Aucun nom dans la liste des noms autorisés n'a été trouvé pour le tableau " & tbl.name & ". La première colonne sera utilisée par défaut."
+        MsgBox "Aucun nom dans la liste des noms autorisés n'a été trouvé pour le tableau " & tbl.Name & ". La première colonne sera utilisée par défaut."
+        Application.StatusBar = "[TableTool]{updateTable} Aucun nom dans la liste des noms autorisés n'a été trouvé pour le tableau " & tbl.Name & ". La première colonne sera utilisée par défaut."
         masterKeyIndex = 1
     ' Si plusieurs noms de MasterKeyColumn sont trouvés, lever une erreur
     ElseIf masterKeyCount > 1 Then
@@ -160,12 +160,12 @@ Private Sub updateTable(tbl As ListObject)
     End If
 
     ' Mettre à jour les valeurs de la MasterKeyColumn
-    For i = 1 To tbl.ListRows.count
+    For i = 1 To tbl.ListRows.Count
         masterKeyColumn.Add tbl.DataBodyRange(i, masterKeyIndex).value
     Next i
 
     ' Mettre à jour le "cœur" du tableau
-    coreRange = tbl.Range.Offset(1, masterKeyIndex).Resize(tbl.Range.Rows.count - 1, tbl.Range.Columns.count - masterKeyIndex).value
+    coreRange = tbl.Range.Offset(1, masterKeyIndex).Resize(tbl.Range.Rows.Count - 1, tbl.Range.Columns.Count - masterKeyIndex).value
 End Sub
 
 
@@ -181,9 +181,9 @@ Public Sub replaceValues(newValues As Variant, columnNames As Variant, rowValues
     replaceCount = 0
 
     ' Compter le nombre de remplacements qui seraient effectués
-    For i = 1 To pHeaders.count
+    For i = 1 To pHeaders.Count
         If IsEmpty(columnNames) Or IsInArray(pHeaders(i), columnNames) Then
-            For j = 1 To masterKeyColumn.count
+            For j = 1 To masterKeyColumn.Count
                 If IsEmpty(rowValues) Or IsInArray(masterKeyColumn(j), rowValues) Then
                     replaceCount = replaceCount + 1
                 End If
@@ -200,12 +200,12 @@ Public Sub replaceValues(newValues As Variant, columnNames As Variant, rowValues
     replaceCount = 0
 
     ' Parcourir toutes les colonnes du tableau
-    For i = 1 To pHeaders.count
+    For i = 1 To pHeaders.Count
         ' Si aucune colonne n'est spécifiée, ou si le nom de la colonne actuelle est dans columnNames
         If IsEmpty(columnNames) Or IsInArray(pHeaders(i), columnNames) Then
             colIndex = i
             ' Parcourir toutes les lignes du tableau
-            For j = 1 To masterKeyColumn.count
+            For j = 1 To masterKeyColumn.Count
                 ' Si aucune ligne n'est spécifiée, ou si la valeur de la ligne actuelle est dans rowValues
                 If IsEmpty(rowValues) Or IsInArray(masterKeyColumn(j), rowValues) Then
                     rowIndex = j
@@ -221,21 +221,21 @@ End Sub
 
 
 ' Fonction pour extraire certaines lignes et/ou colonnes du tableau
-Public Function extract(columnNames As Variant, Optional rowValues As Variant, Optional withHeader As Boolean = False, Optional includeMasterKey As Boolean = False) As tableTool
+Public Function extract(columnNames As Variant, Optional rowValues As Variant, Optional withHeader As Boolean = False, Optional includeMasterKey As Boolean = False) As TableTool
     Dim i As Long
     Dim j As Long
     Dim k As Long
     Dim colIndex As Variant
     Dim rowIndex As Variant
-    Dim extractTable As New tableTool
+    Dim extractTable As New TableTool
 
     ' Parcourir toutes les colonnes du tableau
-    For i = 1 To pHeaders.count
+    For i = 1 To pHeaders.Count
         ' Si aucune colonne n'est spécifiée, ou si le nom de la colonne actuelle est dans columnNames
         If IsEmpty(columnNames) Or IsInArray(pHeaders(i), columnNames) Then
             colIndex = i
             ' Parcourir toutes les lignes du tableau
-            For j = 1 To masterKeyColumn.count
+            For j = 1 To masterKeyColumn.Count
                 ' Si aucune ligne n'est spécifiée, ou si la valeur de la ligne actuelle est dans rowValues
                 If IsEmpty(rowValues) Or IsInArray(masterKeyColumn(j), rowValues) Then
                     rowIndex = j
@@ -252,7 +252,7 @@ Public Function extract(columnNames As Variant, Optional rowValues As Variant, O
 
     ' Ajouter les valeurs de la MasterKeyColumn au nouvel objet TableTool, si includeMasterKey est True
     If includeMasterKey Then
-        For i = 1 To masterKeyColumn.count
+        For i = 1 To masterKeyColumn.Count
             extractTable.masterKeyColumn.Add masterKeyColumn(i)
         Next i
     End If
