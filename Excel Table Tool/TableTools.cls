@@ -7,74 +7,115 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
-' Fonction pour vérifier si un tableau existe
-Public Function TableExists(TableName As String) As Boolean
-    On Error Resume Next
-    TableExists = False
-    If ThisWorkbook.Worksheets(TableName).ListObjects.Count > 0 Then
-        TableExists = True
+'Cette Class permet de manipuler facilement les tableaux
+
+
+' Fonction pour obtenir la plage de cellules d'un tableau
+Public Function GetContent(tableName As String, Optional ws As Worksheet) As Range
+    Dim lo As ListObject
+    
+    ' Si ws n'est pas défini, utiliser toutes les feuilles de calcul du classeur
+    If ws Is Nothing Then
+        Dim w As Worksheet
+        For Each w In ThisWorkbook.Worksheets
+            For Each lo In w.ListObjects
+                If lo.Name = tableName Then
+                    Set GetContent = lo.Range
+                    Exit Function
+                End If
+            Next lo
+        Next w
+    Else
+        ' Sinon, utiliser uniquement la feuille de calcul spécifiée
+        For Each lo In ws.ListObjects
+            If lo.Name = tableName Then
+                Set GetContent = lo.Range
+                Exit Function
+            End If
+        Next lo
     End If
+    
+    ' Si aucun tableau n'a été trouvé, retourner Nothing
+    Set GetContent = Nothing
 End Function
 
+
+' Fonction pour vérifier si un tableau existe
+Public Function TableExists(tableName As String, Optional ws As Worksheet) As Boolean
+    Dim lo As ListObject
+    
+    ' Si ws n'est pas défini, utiliser toutes les feuilles de calcul du classeur
+    If ws Is Nothing Then
+        Dim w As Worksheet
+        For Each w In ThisWorkbook.Worksheets
+            For Each lo In w.ListObjects
+                If lo.Name = tableName Then
+                    TableExists = True
+                    Exit Function
+                End If
+            Next lo
+        Next w
+    Else
+        ' Sinon, utiliser uniquement la feuille de calcul spécifiée
+        For Each lo In ws.ListObjects
+            If lo.Name = tableName Then
+                TableExists = True
+                Exit Function
+            End If
+        Next lo
+    End If
+    
+    ' Si le tableau n'est pas trouvé, retourner False
+    TableExists = False
+End Function
+
+
+
 ' Fonction pour supprimer un tableau
-Public Sub DeleteTable(TableName As String)
+Public Sub DeleteTable(tableName As String)
     On Error Resume Next
-    ThisWorkbook.Worksheets(TableName).ListObjects(1).Delete
+    ThisWorkbook.Worksheets(tableName).ListObjects(1).Delete
 End Sub
 
 ' Fonction pour créer un tableau
-Public Sub CreateTable(TableName As String, RangeString As String, IncludeHeaders As Boolean)
+Public Sub CreateTable(wsheet As Worksheet, tableName As String, RangeString As String, IncludeHeaders As Boolean)
     Dim rng As Range
     Dim tbl As ListObject
 
     ' Définir la plage sur laquelle le tableau sera créé
-    Set rng = ThisWorkbook.Range(RangeString)
+    Set rng = wsheet.Range(RangeString)
 
     ' Créer le tableau
-    Set tbl = ThisWorkbook.ActiveSheet.ListObjects.Add(xlSrcRange, rng, , xlYes)
+    Set tbl = wsheet.ListObjects.Add(xlSrcRange, rng, , IncludeHeaders)
 
     ' Définir le nom du tableau
-    tbl.Name = TableName
-
-    ' Spécifier si le tableau doit inclure des en-têtes
-    If IncludeHeaders Then
-        tbl.HeaderRowRange.EntireRow.Hidden = False
-    Else
-        tbl.HeaderRowRange.EntireRow.Hidden = True
-    End If
+    tbl.Name = tableName
 End Sub
 
 
-' Fonction pour obtenir l'objet SuperTable associé à une requête
-Public Function GetTableObject(TableName As String) As ListObject
-    On Error Resume Next
-    Err.Raise 1004, "TableTools", "Not Yet Implemented"
-End Function
-
-
+' Function to get the name of tha table that intersect with the position of the range
 Public Function getTableNameFromRange(rangeToSearch As Range) As String
     Dim ws As Worksheet
     Dim tbl As ListObject
     Dim intersectRange As Range
-
-    ' Parcourir chaque feuille de calcul et chaque tableau
-    For Each ws In ThisWorkbook.Worksheets
+    Set ws = rangeToSearch.Worksheet
         For Each tbl In ws.ListObjects
-            ' Vérifier si la plage spécifiée intersecte entièrement avec le tableau
-            Set intersectRange = Application.Intersect(tbl.Range, rangeToSearch)
-            If Not intersectRange Is Nothing Then
-                If intersectRange.Address = tbl.Range.Address Then
-                    ' Retourner le nom du tableau
-                    getTableFromRange = tbl.Name
-                    Exit Function
+            ' Vérifier si la plage spécifiée est sur la même feuille de calcul que le tableau
+            If rangeToSearch.Worksheet.Name = ws.Name Then
+                ' Vérifier si la plage spécifiée intersecte entièrement avec le tableau
+                Set intersectRange = Application.Intersect(tbl.Range, rangeToSearch)
+                If Not intersectRange Is Nothing Then
+                        ' Retourner le nom du tableau
+                        getTableNameFromRange = tbl.Name
+                        Exit Function
                 End If
             End If
         Next tbl
-    Next ws
 
     ' Si aucun tableau n'a été trouvé, retourner une chaîne vide
-    getTableFromRange = ""
+    getTableNameFromRange = ""
 End Function
+
 
 'Get the list of table présent in the workbook
 Function getTablesNamesList() As Variant
@@ -98,3 +139,75 @@ Function getTablesNamesList() As Variant
     ' Retourner le tableau de noms de tableaux
     getTablesNamesList = TableNames
 End Function
+
+' Fonction pour ajouter des données à la fin d'un tableau
+Public Sub addAtEnd(tableName As String, rangeToPaste As Range, Optional ws As Worksheet)
+    Dim tbl As ListObject
+    Dim rng As Range
+
+    ' Si aucune feuille de calcul n'est spécifiée, utilisez la feuille de calcul active
+    If ws Is Nothing Then Set ws = ActiveSheet
+
+    ' Vérifiez si le tableau existe
+    If Not TableExists(tableName, ws) Then
+        MsgBox "Table " & tableName & " does not exist."
+        Exit Sub
+    End If
+
+    ' Obtenez le tableau et la plage de cellules
+    Set tbl = ws.ListObjects(tableName)
+    Set rng = tbl.Range
+
+    ' Ajoutez les données à la fin du tableau
+    rng.Resize(rng.Rows.Count + rangeToPaste.Rows.Count, rng.Columns.Count).value = rangeToPaste.value
+End Sub
+
+
+Public Sub TestTableTools()
+    Dim tableName As String
+    Dim RangeString As String
+    Dim IncludeHeaders As Boolean
+    Dim rng As Range
+    Dim TableNames() As String
+    
+    ' Définir les valeurs de test
+    tableName = "MonTableau"
+    RangeString = "A1:C10"
+    IncludeHeaders = True
+    
+    ' Tester la fonction CreateTable
+    CreateTable tableName, RangeString, IncludeHeaders
+    Debug.Assert TableExists(tableName)
+    
+    ' Tester la fonction GetContent
+    Set rng = GetContent(tableName)
+    Debug.Assert Not rng Is Nothing
+    Debug.Print "Le tableau est dans la plage : " & rng.Address
+    
+    ' Tester la fonction getTableNameFromRange
+    Debug.Assert getTableNameFromRange(rng) = tableName
+    
+    ' Tester la fonction getTablesNamesList
+    TableNames = getTablesNamesList()
+    Debug.Assert UBound(TableNames) >= 0
+    Debug.Assert IsInArray(tableName, TableNames)
+    
+    ' Tester la fonction DeleteTable
+    DeleteTable tableName
+    Debug.Assert Not TableExists(tableName)
+End Sub
+
+' Fonction auxiliaire pour vérifier si une valeur est dans un tableau
+Private Function IsInArray(valToBeFound As Variant, arr As Variant) As Boolean
+    Dim element As Variant
+    On Error GoTo ErrorHandler
+    For Each element In arr
+        If element = valToBeFound Then
+            IsInArray = True
+            Exit Function
+        End If
+    Next element
+ErrorHandler:
+    On Error GoTo 0
+End Function
+
