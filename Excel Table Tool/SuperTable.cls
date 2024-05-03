@@ -80,7 +80,7 @@ End Function
 
 
 ' Fonction pour obtenir un tableau à partir de son nom
-Public Function fromName(TableName As String, Optional Workbook As Workbook = Nothing, Optional sheet As Worksheet = Nothing)
+Public Function fromName(tableName As String, Optional Workbook As Workbook = Nothing, Optional sheet As Worksheet = Nothing)
     Dim ws As Worksheet
     Dim tbl As ListObject
 
@@ -97,7 +97,7 @@ Public Function fromName(TableName As String, Optional Workbook As Workbook = No
         For Each ws In pWorkbook.Worksheets
             For Each tbl In ws.ListObjects
                 ' Si le nom du tableau correspond à tableName
-                If tbl.Name = TableName Then
+                If tbl.Name = tableName Then
                     ' Mettre à jour les propriétés de l'objet
                     Set pWorksheet = ws
                     pRange = tbl.Range.value
@@ -111,7 +111,7 @@ Public Function fromName(TableName As String, Optional Workbook As Workbook = No
         Set pWorksheet = sheet
         For Each tbl In pWorksheet.ListObjects
             ' Si le nom du tableau correspond à tableName
-            If tbl.Name = TableName Then
+            If tbl.Name = tableName Then
                 ' Mettre à jour les propriétés de l'objet
                 pRange = tbl.Range.value
                 updateTable tbl
@@ -121,7 +121,7 @@ Public Function fromName(TableName As String, Optional Workbook As Workbook = No
     End If
 
     ' Si aucun tableau correspondant n'est trouvé, lever une erreur
-    Err.Raise 1012, , "Table " & TableName & " not found in the workbook."
+    Err.Raise 1012, , "Table " & tableName & " not found in the workbook."
 End Function
 
 
