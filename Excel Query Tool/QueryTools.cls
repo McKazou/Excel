@@ -54,22 +54,29 @@ End Sub
 Public Function GetQueryObject(QueryName As String) As QueryTable
     Dim ws As Worksheet
     Dim lo As ListObject
+    Dim qt As QueryTable
     
     ' Parcourir toutes les feuilles de calcul du classeur
     For Each ws In ThisWorkbook.Worksheets
         ' Parcourir tous les objets ListObject (tableaux) de la feuille de calcul
         For Each lo In ws.ListObjects
-            ' Vérifier si l'objet ListObject est associé à la requête
-            If lo.QueryTable Is Not Nothing Then
-                If lo.QueryTable.WorkbookConnection.Name = QueryName Then
+            ' Vérifier si l'objet ListObject est une QueryTable
+            On Error Resume Next
+            Set qt = lo.QueryTable
+            On Error GoTo 0
+            
+            ' Si l'objet ListObject est une QueryTable, vérifier si son nom correspond à QueryName
+            If Not qt Is Nothing Then
+                If qt.WorkbookConnection.Name = "Query - " & QueryName Then
                     ' Retourner l'objet QueryTable
-                    Set GetQueryObject = lo.QueryTable
+                    Set GetQueryObject = qt
                     Exit Function
                 End If
             End If
         Next lo
     Next ws
 End Function
+
 
 
 ' Fonction pour vérifier si une requête est chargée dans une feuille de calcul
@@ -90,7 +97,80 @@ Public Sub UnloadQuery(QueryName As String, Optional DeleteTable As Boolean = Fa
     End If
 End Sub
 
+' Fonction pour obtenir l'emplacement où une requête est chargée
+Public Function GetQueryLocation(QueryName As String) As Range
+    Dim qt As QueryTable
+    Set qt = GetQueryObject(QueryName)
+    
+    If Not qt Is Nothing Then
+        ' Retourner la plage de cellules où la requête est chargée
+        Set GetQueryLocation = qt.ResultRange
+    End If
+End Function
 
+' Fonction pour mettre à jour une requête spécifique
+Public Sub UpdateQuery(QueryName As String)
+    Dim conn As WorkbookConnection
+
+    ' Parcourir chaque connexion dans le classeur
+    For Each conn In ThisWorkbook.Connections
+        ' Vérifier si le nom de la connexion correspond au nom de la requête
+        If conn.Name = QueryName Then
+            ' Actualiser la connexion
+            conn.Refresh
+        End If
+    Next conn
+End Sub
+
+' Fonction pour mettre à jour toutes les requêtes
+Sub UpdateAllQuery()
+    Dim conn As WorkbookConnection
+
+    ' Parcourir chaque connexion dans le classeur
+    For Each conn In ThisWorkbook.Connections
+        ' Actualiser la connexion
+        conn.Refresh
+    Next conn
+End Sub
+
+
+Public Sub TestQueryTools()
+    Dim QueryName As String
+    Dim MCode As String
+    Dim LoadDataSheet As Worksheet
+    Dim StartCell As Range
+    Dim rng As Range
+    
+    ' Définir les valeurs de test
+    QueryName = "MaRequete"
+    MCode = "let Source = Excel.CurrentWorkbook(){[Name=""Table1""]}[Content] in Source"
+    Set LoadDataSheet = ThisWorkbook.Worksheets("Feuil1")
+    Set StartCell = LoadDataSheet.Range("A1")
+    
+    ' Tester la fonction CreateQuery
+    CreateQuery QueryName, MCode
+    Debug.Assert QueryExists(QueryName)
+    
+    ' Tester la fonction LoadQueryToWorksheet
+    LoadQueryToWorksheet QueryName, LoadDataSheet, StartCell
+    Debug.Assert IsQueryLoaded(QueryName)
+    
+    ' Tester la fonction GetQueryObject
+    Debug.Assert Not GetQueryObject(QueryName) Is Nothing
+    
+    ' Tester la fonction GetQueryLocation
+    Set rng = GetQueryLocation(QueryName)
+    Debug.Assert Not rng Is Nothing
+    Debug.Print "La requête est chargée dans la plage : " & rng.Address
+    
+    ' Tester la fonction UnloadQuery
+    UnloadQuery QueryName
+    Debug.Assert Not IsQueryLoaded(QueryName)
+    
+    ' Tester la fonction DeleteQuery
+    DeleteQuery QueryName
+    Debug.Assert Not QueryExists(QueryName)
+End Sub
 
 
 
