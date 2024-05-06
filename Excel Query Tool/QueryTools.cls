@@ -50,7 +50,7 @@ Public Sub CreateQuery(QueryName As String, MCode As String)
     End If
 End Sub
 
-' Fonction pour obtenir l'objet QueryTable associÃ© Ã  une requÃªte
+' Fonction pour obtenir l'objet QueryTable associé à une requéte
 Public Function GetQueryObject(QueryName As String) As QueryTable
     Dim ws As Worksheet
     Dim lo As ListObject
@@ -61,7 +61,7 @@ Public Function GetQueryObject(QueryName As String) As QueryTable
         ' Parcourir tous les objets ListObject (tableaux) de la feuille de calcul
         For Each lo In ws.ListObjects
             ' VÃ©rifier si l'objet ListObject est une QueryTable
-            On Error resume next
+            On Error Resume Next
             Set qt = lo.QueryTable
             On Error GoTo 0
             

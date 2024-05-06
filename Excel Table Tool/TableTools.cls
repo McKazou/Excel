@@ -69,8 +69,6 @@ Public Function TableExists(tableName As String, Optional ws As Worksheet) As Bo
     TableExists = False
 End Function
 
-
-
 ' Fonction pour supprimer un tableau
 Public Sub DeleteTable(tableName As String)
     On Error Resume Next
@@ -99,12 +97,25 @@ Public Function AreTablesIdentical(table1 As Range, table2 As Range) As Boolean
         Exit Function
     End If
     
+    ' Calculer le nombre total de cellules à parcourir
+    Dim totalCells As Long
+    totalCells = table1.Rows.Count * table1.Columns.Count
+    
     ' Comparer chaque cellule dans les deux tableaux
     Dim r As Long, c As Long
+    Dim currentCell As Long
     For r = 1 To table1.Rows.Count
         For c = 1 To table1.Columns.Count
+            ' Mettre à jour le numéro de cellule actuel
+            currentCell = ((r - 1) * table1.Columns.Count) + c
+            
+            ' Afficher la progression dans la barre d'état d'Excel
+            Application.StatusBar = "Comparaison des cellules : " & currentCell & " sur " & totalCells
+            
             If table1.Cells(r, c).value <> table2.Cells(r, c).value Then
                 AreTablesIdentical = False
+                ' Réinitialiser la barre d'état avant de quitter
+                Application.StatusBar = False
                 Exit Function
             End If
             DoEvents ' Permettre à Excel de traiter d'autres événements
@@ -113,7 +124,10 @@ Public Function AreTablesIdentical(table1 As Range, table2 As Range) As Boolean
     
     ' Si toutes les cellules sont identiques, les tableaux sont identiques
     AreTablesIdentical = True
+    ' Réinitialiser la barre d'état à la fin
+    Application.StatusBar = False
 End Function
+
 
 
 ' Function to get the name of tha table that intersect with the position of the range

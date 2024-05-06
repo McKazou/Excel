@@ -15,6 +15,7 @@ Option Explicit
 ' Propriétés pour le préfixe d'archive par défaut et la feuille d'archive par défaut
 Private pDEFAULT_ARCHIVE_PREFIXE As String
 Private pDEFAULT_ARCHIVE_SHEET As String
+Private Const DEFAUT_FOLDER As String = "\ARCHIVE"
 
 ' Constructeur de la classe
 Public Sub Class_Initialize()
@@ -133,22 +134,74 @@ Private Function getRangeFromName(nameGiven As String)
             'ICI IL FAUT RENOMMER LE TABLEAU J'AI PERDU DES FONCTIONS ICI
         Else
             Err.Raise 1005, "SnapshotTools", "No Table with the name " & nameGiven & " found."
-            Exit Sub
+            Exit Function
         End If
     End If
 End Function
 'This function wil generate a CSV file
-Sub doCSVSnapshot(nameGiven As String, Optional OutputFolder As String, Optional FileName As String)
+Sub doCSVSnapshot(nameGiven As String, Optional relativeFolder As String, Optional FileName As String)
     
     'test if optional values are given
-    If OutputFolder = "" Then
-        
+    If relativeFolder = "" Then
+        relativeFolder = DEFAUT_FOLDER
     End If
+    
+    'Getting the range of the table
+    Dim tabsRange As Range
+    Set tabsRange = getRangeFromName(nameGiven)
+    
+    Dim previousRange As Range
+    Set previousRange = getRangeFromName("Backend_LatestCSV")
+    
+    'Filtrer la colonne "Timestamps" pour n'afficher que les lignes avec la date la plus récente
+    Dim maxDate As Date
+    ' Trouver l'index de la colonne "Timestamps"
+    Dim colIndex As Integer
+    For colIndex = 1 To previousRange.Columns.Count
+        If previousRange.Cells(1, colIndex).value = "Timestamps" Then
+            Exit For
+        End If
+    Next colIndex
+    
+    ' Utiliser l'index pour accéder à la colonne et obtenir la date maximale
+    maxDate = Application.WorksheetFunction.Max(previousRange.Columns(colIndex))
+    
+    previousRange.AutoFilter Field:=previousRange.Columns("Timestamps").Column, Criteria1:="=" & maxDate
+    Set previousRange = previousRange.SpecialCells(xlCellTypeVisible)
+    
     If FileName = "" Then
-        
+        Dim Timestamp As String
+        Timestamp = Format(Now, "yyyymmdd-HHMM")
+        nameGiven = "BOM_" & nameGiven & "_" & Timestamp
     End If
     
+    Dim absoluteFolder As String
+    absoluteFolder = CurDir & relativeFolder
     
+    Dim tabToo As TableTools
+    If Not tabToo.AreTablesIdentical(tabsRange, previousRange) Then
+        ExportRangeToCSV tabsRange, absoluteFolder, nameGiven
+    Else
+        Application.StatusBar = "Noticed no change => no snapshot done at" & Now
+    End If
+    
+    '------------- CLEANUP -------------------
+    Dim sheeTool As New SheetsTools
+    Dim newSheetList As Variant
+    Set newSheetList = sheeTool.GetSheetNamesList
+    
+    Dim sheetList As Variant
+    Set sheetList = sheeTool.GetSheetNamesList 'Assuming this gets the original list of sheets
+    
+    Dim sh As Variant
+    For Each sh In newSheetList
+        'Delete only the sheets that are present in "newSheetList" but not in "sheetList"
+        If IsError(Application.Match(sh, sheetList, 0)) Then
+            Application.DisplayAlerts = False 'Disable prompts, the next line deletes without confirmation
+            ThisWorkbook.Sheets(sh).Delete
+            Application.DisplayAlerts = True 'Enable prompts again
+        End If
+    Next sh
 End Sub
 
 Sub ExportRangeToCSV(RangeToExport As Range, OutputFolder As String, FileName As String)
