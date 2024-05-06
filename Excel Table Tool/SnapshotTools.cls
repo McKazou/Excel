@@ -28,7 +28,7 @@ Public Sub Class_Initialize()
 End Sub
 
 ' Méthode pour faire un snapshot d'un tableau
-Public Sub doSnapshot(NameGiven As String)
+Public Sub doSnapshot(nameGiven As String)
     ' Vérifier que pDEFAULT_ARCHIVE_PREFIXE et pDEFAULT_ARCHIVE_SHEET ont une valeur
     If pDEFAULT_ARCHIVE_PREFIXE = "" Or pDEFAULT_ARCHIVE_SHEET = "" Then
         Err.Raise Number:=1004, _
@@ -37,56 +37,14 @@ Public Sub doSnapshot(NameGiven As String)
         Exit Sub
     End If
     
-    'Contient le contenu du tableau à copier
     Dim tabRanges As Range
-    'Contient l'emplacement où est chargé la query
-    Dim QuerRange As Range
-    'Contient des méthodes de manipulation de Query
-    Dim queryTool As New QueryTools
-    'Contient des méthodes de manipulation d'objet tableau au sens Excel
-    Dim tabtool As New TableTools
-    'Contient the worksheet temporaire créé dans le cas où c'est une query non chargé, il sera delete à la fin de la fonction
-    Dim wsh As Worksheet
-    
-    ' Vérifier si la requête existe
-    If queryTool.QueryExists(NameGiven) Then
-        ' Vérifier si la requête est chargée
-        If Not queryTool.IsQueryLoaded(NameGiven) Then
-        'Si elle n'est pas chargé, on va créé un onglet, le charger dans cette onglet afin de copier les valeurs.
-            Dim sheetToo As New SheetsTools
-            Dim randText As String
-
-            randText = GenerateRandomText(10, True, False, False)
-            Set wsh = sheetToo.CreateSheet(randText)
-            queryTool.LoadQueryToWorksheet NameGiven, wsh, wsh.Range("A1")
-            'Maintenant la Query est chargé dans l'onglet "wsh"
-            NameGiven = tabtool.getTableNameFromRange(wsh.Range("A1"))
-            Set tabRanges = tabtool.GetContent(NameGiven, wsh)
-        Else
-        'Si elle est chargé, on va récupéré l'emplacement de la Query, récupéré le tableau ou elle est, copier le contenu et aller le rajouter à un tableau
-            Set QuerRange = queryTool.GetQueryLocation(NameGiven)
-            Set wsh = QuerRange.Worksheet
-            NameGiven = tabtool.getTableNameFromRange(wsh.Range("A1"))
-            Set tabRanges = tabtool.GetContent(NameGiven)
-        End If
-    Else
-        'La Query n'existe pas
-        'Try with Table
-        If tabtool.TableExists(NameGiven) Then
-            'Si la table Existe on va récupéré son contenu pour le copier
-
-            Set tabRanges = tabtool.GetContent(NameGiven)
-        Else
-            Err.Raise 1005, "SnapshotTools", "No Table with the name " & NameGiven & " found."
-            Exit Sub
-        End If
-    End If
+    Set tabRanges = getRangeFromName(nameGiven)
     
     'Ici je dois avoir une range dans tabRanges qui contient le contenu du tableau à sauvegarder (copier vers la destination).
 
     ' On va créer la destination en cherchant le tableau dont le nom est "NameGiven"&"pDEFAULT_ARCHIVE_PREFIXE"
     Dim archiveTableName As String
-    archiveTableName = pDEFAULT_ARCHIVE_PREFIXE & NameGiven
+    archiveTableName = pDEFAULT_ARCHIVE_PREFIXE & nameGiven
     
     ' Si le tableau n'existe pas, on va le créer dans l'onglet dont le nom est "pDEFAULT_ARCHIVE_SHEET"
     Dim sheetTool As New SheetsTools
@@ -101,6 +59,9 @@ Public Sub doSnapshot(NameGiven As String)
     Dim tableTool As New TableTools
     If Not tableTool.TableExists(archiveTableName) Then
         tableTool.CreateTable archiveSheet, archiveTableName, archiveSheet.Range("A1").Address, True
+        
+    Else
+        'j'ai PERDU UNE GROSSE PARTIE ICI DANS LE CAS LE TABLEAU EXISTE AFIN DE VERIFIER SON NOM
     End If
     
     ' Copier le contenu du tableau à sauvegarder vers la destination
@@ -109,7 +70,7 @@ Public Sub doSnapshot(NameGiven As String)
     Set lo = archiveSheet.ListObjects(archiveTableName)
     
     'Ajoute à la fin du tableau
-    tableTool.addAtEnd NameGiven, tabRanges, archiveSheet
+    tableTool.addAtEnd nameGiven, tabRanges, archiveSheet
     
     
     '-----------Clean up--------------
@@ -127,6 +88,85 @@ Public Sub doSnapshot(NameGiven As String)
 
 
 
+End Sub
+
+Private Function getRangeFromName(nameGiven As String)
+
+    'Contient l'emplacement où est chargé la query
+    Dim QuerRange As Range
+    'Contient des méthodes de manipulation de Query
+    Dim queryTool As New QueryTools
+    'Contient des méthodes de manipulation d'objet tableau au sens Excel
+    Dim tabtool As New TableTools
+    'Contient the worksheet temporaire créé dans le cas où c'est une query non chargé, il sera delete à la fin de la fonction
+    Dim wsh As Worksheet
+    
+    ' Vérifier si la requête existe
+    If queryTool.QueryExists(nameGiven) Then
+        ' Vérifier si la requête est chargée
+        If Not queryTool.IsQueryLoaded(nameGiven) Then
+        'Si elle n'est pas chargé, on va créé un onglet, le charger dans cette onglet afin de copier les valeurs.
+            Dim sheetToo As New SheetsTools
+            Dim randText As String
+
+            randText = GenerateRandomText(10, True, False, False)
+            Set wsh = sheetToo.CreateSheet(randText)
+            queryTool.LoadQueryToWorksheet nameGiven, wsh, wsh.Range("A1")
+            'Maintenant la Query est chargé dans l'onglet "wsh"
+            nameGiven = tabtool.getTableNameFromRange(wsh.Range("A1"))
+            Set getRangeFromName = tabtool.GetContent(nameGiven, wsh)
+        Else
+        'Si elle est chargé, on va récupéré l'emplacement de la Query, récupéré le tableau ou elle est, copier le contenu et aller le rajouter à un tableau
+            Set QuerRange = queryTool.GetQueryLocation(nameGiven)
+            Set wsh = QuerRange.Worksheet
+            nameGiven = tabtool.getTableNameFromRange(wsh.Range("A1"))
+            Set getRangeFromName = tabtool.GetContent(nameGiven)
+        End If
+    Else
+        'La Query n'existe pas
+        'Try with Table
+        If tabtool.TableExists(nameGiven) Then
+            'Si la table Existe on va récupéré son contenu pour le copier
+
+            Set getRangeFromName = tabtool.GetContent(nameGiven)
+            
+            'ICI IL FAUT RENOMMER LE TABLEAU J'AI PERDU DES FONCTIONS ICI
+        Else
+            Err.Raise 1005, "SnapshotTools", "No Table with the name " & nameGiven & " found."
+            Exit Sub
+        End If
+    End If
+End Function
+'This function wil generate a CSV file
+Sub doCSVSnapshot(nameGiven As String, Optional OutputFolder As String, Optional FileName As String)
+    
+    'test if optional values are given
+    If OutputFolder = "" Then
+        
+    End If
+    If FileName = "" Then
+        
+    End If
+    
+    
+End Sub
+
+Sub ExportRangeToCSV(RangeToExport As Range, OutputFolder As String, FileName As String)
+    Dim TempWorkbook As Workbook
+    Dim TempWorksheet As Worksheet
+
+    ' Créer un nouveau classeur et une nouvelle feuille de calcul
+    Set TempWorkbook = Application.Workbooks.Add
+    Set TempWorksheet = TempWorkbook.Worksheets(1)
+
+    ' Copier la plage dans la nouvelle feuille de calcul
+    RangeToExport.Copy TempWorksheet.Range("A1")
+
+    ' Enregistrer la nouvelle feuille de calcul au format CSV dans le dossier spécifié
+    TempWorkbook.SaveAs OutputFolder & "\" & FileName & ".csv", FileFormat:=xlCSV
+
+    ' Fermer le classeur temporaire sans enregistrer les modifications
+    TempWorkbook.Close SaveChanges:=False
 End Sub
 
 
