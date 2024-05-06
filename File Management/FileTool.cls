@@ -147,7 +147,7 @@ Public Function getPathWhereScriptIsRun() As String
 End Function
 
 Public Sub FileFinder(FileName As String, selectedFolder As String, isRecursif As Boolean, recursifLimit As Integer, Optional ignoreHidden As Boolean = True)
-    Dim FSO As Object
+    Dim fso As Object
     Dim Folder As Object
     Dim Subfolder As Object
     Dim File As Object
@@ -159,8 +159,8 @@ Public Sub FileFinder(FileName As String, selectedFolder As String, isRecursif A
         selectedFolder = selectedFolder & "\"
     End If
 
-    Set FSO = CreateObject("Scripting.FileSystemObject")
-    Set Folder = FSO.GetFolder(selectedFolder)
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    Set Folder = fso.GetFolder(selectedFolder)
 
     ' Parcourir tous les fichiers dans le dossier
     For Each File In Folder.Files
@@ -185,11 +185,8 @@ Public Sub FileFinder(FileName As String, selectedFolder As String, isRecursif A
 
     Set File = Nothing
     Set Folder = Nothing
-    Set FSO = Nothing
+    Set fso = Nothing
 End Sub
-
-
-
 
 
 ' Méthode pour renommer un fichier
@@ -206,4 +203,29 @@ End Function
 Public Sub moveFileTo()
     ' Code pour déplacer un fichier
 End Sub
+
+Function GetAbsolutePath(RelativePath As String) As String
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    
+    ' Obtenez le chemin du répertoire de travail actuel
+    Dim CurrentDirectory As String
+    CurrentDirectory = CurDir
+    
+    ' Combinez le chemin du répertoire de travail actuel avec le chemin relatif
+    Dim CombinedPath As String
+    CombinedPath = CurrentDirectory & RelativePath
+    
+    ' Vérifiez si le dossier combiné existe
+    If fso.FolderExists(CombinedPath) Then
+        ' Si le dossier existe, retournez le chemin combiné
+        GetAbsolutePath = CombinedPath
+    Else
+        ' Si le dossier n'existe pas, remontez d'un niveau et réessayez
+        GetAbsolutePath = GetAbsolutePath("..\" & RelativePath)
+    End If
+    
+    Set fso = Nothing
+End Function
+
 
