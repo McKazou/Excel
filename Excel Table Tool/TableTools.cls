@@ -140,6 +140,32 @@ Function getTablesNamesList() As Variant
     getTablesNamesList = TableNames
 End Function
 
+Function getTableNameListIn(sheetName As String) As Variant
+    Dim ws As Worksheet
+    Dim tbl As ListObject
+    Dim TableNames() As String
+    Dim i As Integer
+
+    i = 0
+
+    ' Parcourir chaque feuille de calcul et chaque tableau
+    For Each ws In ThisWorkbook.Worksheets
+        ' Vérifier si le nom de la feuille de calcul correspond au paramètre
+        If ws.Name = sheetName Then
+            For Each tbl In ws.ListObjects
+                ' Ajouter le nom du tableau au tableau
+                ReDim Preserve TableNames(i)
+                TableNames(i) = tbl.Name
+                i = i + 1
+            Next tbl
+        End If
+    Next ws
+
+    ' Retourner le tableau de noms de tableaux
+    getTableNameListIn = TableNames
+End Function
+
+
 ' Fonction pour ajouter des données à la fin d'un tableau
 Public Sub addAtEnd(tableName As String, rangeToPaste As Range, Optional ws As Worksheet)
     Dim tbl As ListObject
@@ -157,10 +183,119 @@ Public Sub addAtEnd(tableName As String, rangeToPaste As Range, Optional ws As W
     ' Obtenez le tableau et la plage de cellules
     Set tbl = ws.ListObjects(tableName)
     Set rng = tbl.Range
-
+    
+    If (rangeToPaste.Columns.Count > rng.Columns.Count) Then
+        'Insert as much Column at the right of the table as the difference between the two
+        For i = rng.Columns.Count + 1 To rangeToPaste.Columns.Count
+            'Insert column at the end of the table
+            rng.Cells(1, rng.Columns.Count + 1).EntireColumn.Insert
+        Next
+    End If
+    
     ' Ajoutez les données à la fin du tableau
-    rng.Resize(rng.Rows.Count + rangeToPaste.Rows.Count, rng.Columns.Count).value = rangeToPaste.value
+    Dim rowValues() As Variant
+    Dim oneDValues() As Variant
+    Dim j As Integer
+    For i = 1 To rangeToPaste.Rows.Count
+        rowValues = rangeToPaste.Rows(i).value
+        ReDim oneDValues(1 To UBound(rowValues, 2))
+        For j = 1 To UBound(rowValues, 2)
+            oneDValues(j) = rowValues(1, j)
+        Next j
+        Call addRow(tableName, oneDValues, ws)
+    Next i
+
+    ' Check if the header is at its default value
+    If tbl.HeaderRowRange.Cells(1, 1).value = "Column1" Then
+        ' Replace the headers with the values of the first row
+        tbl.HeaderRowRange.value = tbl.ListRows(1).Range.value
+        ' Delete the first row
+        tbl.ListRows(1).Delete
+    End If
 End Sub
+
+
+
+' Fonction pour ajouter une ligne à un tableau
+Public Function addRow(tableName As String, rowValues As Variant, Optional ws As Worksheet)
+    ' Si aucune feuille de calcul n'est spécifiée, utilisez la feuille de calcul active
+    If ws Is Nothing Then Set ws = ActiveSheet
+
+    ' Vérifiez si le tableau existe
+    If Not TableExists(tableName, ws) Then
+        Err.Raise "1006", "TableTools", "Table " & tableName & " does not exist."
+        Exit Function
+    End If
+
+    ' Vérifiez si rowValues est vide ou Nothing
+    If IsEmpty(rowValues) Then
+        Err.Raise "1008", "TableTools", "No Data to add"
+        Exit Function
+    End If
+
+    ' Obtenez le tableau
+    Dim tbl As ListObject
+    Set tbl = ws.ListObjects(tableName)
+
+    ' Ajoutez une nouvelle ligne au tableau avec les valeurs fournies
+    Dim newRow As ListRow
+    Set newRow = tbl.ListRows.Add
+    newRow.Range(1, 1).Resize(, UBound(rowValues) - LBound(rowValues) + 1).value = rowValues
+End Function
+
+' Fonction pour ajouter une colonne à un tableau
+Public Function addColumn(tableName As String, columnValues As Variant, Optional ws As Worksheet)
+    ' Si aucune feuille de calcul n'est spécifiée, utilisez la feuille de calcul active
+    If ws Is Nothing Then Set ws = ActiveSheet
+
+    ' Vérifiez si le tableau existe
+    If Not TableExists(tableName, ws) Then
+        Err.Raise "1006", "TableTools", "Table " & tableName & " does not exist."
+        Exit Function
+    End If
+
+    ' Vérifiez si columnValues est vide ou Nothing
+    If IsEmpty(columnValues) Then
+        Err.Raise "1008", "TableTools", "No Data to add"
+        Exit Function
+    End If
+
+    ' Obtenez le tableau
+    Dim tbl As ListObject
+    Set tbl = ws.ListObjects(tableName)
+
+    ' Ajoutez une nouvelle colonne au tableau avec les valeurs fournies
+    tbl.Range.Resize(, tbl.Range.Columns.Count + 1).value = Application.Transpose(columnValues)
+End Function
+
+' Fonction pour vérifier si une colonne existe dans un tableau
+Public Function ColumnExists(tableName As String, columnName As String, Optional ws As Worksheet) As Boolean
+    ' Si aucune feuille de calcul n'est spécifiée, utilisez la feuille de calcul active
+    If ws Is Nothing Then Set ws = ActiveSheet
+
+    ' Vérifiez si le tableau existe
+    If Not TableExists(tableName, ws) Then
+        Err.Raise "1006", "TableTools", "Table " & tableName & " does not exist."
+        Exit Function
+    End If
+
+    ' Obtenez le tableau
+    Dim tbl As ListObject
+    Set tbl = ws.ListObjects(tableName)
+
+    ' Parcourez chaque colonne du tableau pour vérifier si la colonne existe
+    Dim col As ListColumn
+    For Each col In tbl.ListColumns
+        If col.Name = columnName Then
+            ColumnExists = True
+            Exit Function
+        End If
+    Next col
+
+    ' Si la colonne n'a pas été trouvée, retournez False
+    ColumnExists = False
+End Function
+
 
 
 Public Sub TestTableTools()
