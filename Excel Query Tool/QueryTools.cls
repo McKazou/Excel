@@ -7,10 +7,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
-Sub LoadQueryToWorksheet(QueryName As String, LoadDataSheet As Worksheet, StartCell As Range)
+Sub LoadQueryToWorksheet(QueryName As String, LoadDataSheet As Worksheet, startCell As Range)
     With LoadDataSheet.ListObjects.Add(SourceType:=0, Source:= _
     "OLEDB;Provider=Microsoft.Mashup.OleDb.1;Data Source=$Workbook$;Location=" & QueryName, _
-    Destination:=StartCell).QueryTable
+    Destination:=startCell).QueryTable
         .CommandType = xlCmdSql
         .CommandText = Array("SELECT * FROM [" & QueryName & "]")
         .RowNumbers = False
@@ -27,7 +27,7 @@ Sub LoadQueryToWorksheet(QueryName As String, LoadDataSheet As Worksheet, StartC
 End Sub
 
 
-' Fonction pour vérifier si une requête existe
+' Fonction pour vÃ©rifier si une requÃªte existe
 Public Function QueryExists(QueryName As String) As Boolean
     Dim qry As Object
     On Error Resume Next
@@ -36,21 +36,21 @@ Public Function QueryExists(QueryName As String) As Boolean
     QueryExists = Not qry Is Nothing
 End Function
 
-' Fonction pour supprimer une requête
+' Fonction pour supprimer une requÃªte
 Public Sub DeleteQuery(QueryName As String)
     If QueryExists(QueryName) Then
         ThisWorkbook.Queries(QueryName).Delete
     End If
 End Sub
 
-' Fonction pour créer une requête
+' Fonction pour crÃ©er une requÃªte
 Public Sub CreateQuery(QueryName As String, MCode As String)
     If Not QueryExists(QueryName) Then
         ThisWorkbook.Queries.Add Name:=QueryName, Formula:=MCode
     End If
 End Sub
 
-' Fonction pour obtenir l'objet QueryTable associé à une requête
+' Fonction pour obtenir l'objet QueryTable associÃ© Ã  une requÃªte
 Public Function GetQueryObject(QueryName As String) As QueryTable
     Dim ws As Worksheet
     Dim lo As ListObject
@@ -60,12 +60,12 @@ Public Function GetQueryObject(QueryName As String) As QueryTable
     For Each ws In ThisWorkbook.Worksheets
         ' Parcourir tous les objets ListObject (tableaux) de la feuille de calcul
         For Each lo In ws.ListObjects
-            ' Vérifier si l'objet ListObject est une QueryTable
-            On Error Resume Next
+            ' VÃ©rifier si l'objet ListObject est une QueryTable
+            On Error resume next
             Set qt = lo.QueryTable
             On Error GoTo 0
             
-            ' Si l'objet ListObject est une QueryTable, vérifier si son nom correspond à QueryName
+            ' Si l'objet ListObject est une QueryTable, vÃ©rifier si son nom correspond Ã  QueryName
             If Not qt Is Nothing Then
                 If qt.WorkbookConnection.Name = "Query - " & QueryName Then
                     ' Retourner l'objet QueryTable
@@ -75,46 +75,48 @@ Public Function GetQueryObject(QueryName As String) As QueryTable
             End If
         Next lo
     Next ws
+    Exit Function
 End Function
 
 
 
-' Fonction pour vérifier si une requête est chargée dans une feuille de calcul
+
+' Fonction pour vÃ©rifier si une requÃªte est chargÃ©e dans une feuille de calcul
 Public Function IsQueryLoaded(QueryName As String) As Boolean
     IsQueryLoaded = Not GetQueryObject(QueryName) Is Nothing
 End Function
 
-' Fonction pour supprimer le chargement d'une requête dans une feuille de calcul
+' Fonction pour supprimer le chargement d'une requÃªte dans une feuille de calcul
 Public Sub UnloadQuery(QueryName As String, Optional DeleteTable As Boolean = False)
     Dim qt As QueryTable
     Set qt = GetQueryObject(QueryName)
     
     If Not qt Is Nothing Then
-        ' Supprimer le chargement de la requête
+        ' Supprimer le chargement de la requÃªte
         qt.Delete
         ' Supprimer le tableau si DeleteTable est True
         If DeleteTable Then qt.ListObject.Delete
     End If
 End Sub
 
-' Fonction pour obtenir l'emplacement où une requête est chargée
+' Fonction pour obtenir l'emplacement oÃ¹ une requÃªte est chargÃ©e
 Public Function GetQueryLocation(QueryName As String) As Range
     Dim qt As QueryTable
     Set qt = GetQueryObject(QueryName)
     
     If Not qt Is Nothing Then
-        ' Retourner la plage de cellules où la requête est chargée
+        ' Retourner la plage de cellules oÃ¹ la requÃªte est chargÃ©e
         Set GetQueryLocation = qt.ResultRange
     End If
 End Function
 
-' Fonction pour mettre à jour une requête spécifique
+' Fonction pour mettre Ã  jour une requÃªte spÃ©cifique
 Public Sub UpdateQuery(QueryName As String)
     Dim conn As WorkbookConnection
 
     ' Parcourir chaque connexion dans le classeur
     For Each conn In ThisWorkbook.Connections
-        ' Vérifier si le nom de la connexion correspond au nom de la requête
+        ' VÃ©rifier si le nom de la connexion correspond au nom de la requÃªte
         If conn.Name = QueryName Then
             ' Actualiser la connexion
             conn.Refresh
@@ -122,7 +124,7 @@ Public Sub UpdateQuery(QueryName As String)
     Next conn
 End Sub
 
-' Fonction pour mettre à jour toutes les requêtes
+' Fonction pour mettre Ã  jour toutes les requÃªtes
 Sub UpdateAllQuery()
     Dim conn As WorkbookConnection
 
@@ -138,21 +140,21 @@ Public Sub TestQueryTools()
     Dim QueryName As String
     Dim MCode As String
     Dim LoadDataSheet As Worksheet
-    Dim StartCell As Range
+    Dim startCell As Range
     Dim rng As Range
     
-    ' Définir les valeurs de test
+    ' DÃ©finir les valeurs de test
     QueryName = "MaRequete"
     MCode = "let Source = Excel.CurrentWorkbook(){[Name=""Table1""]}[Content] in Source"
     Set LoadDataSheet = ThisWorkbook.Worksheets("Feuil1")
-    Set StartCell = LoadDataSheet.Range("A1")
+    Set startCell = LoadDataSheet.Range("A1")
     
     ' Tester la fonction CreateQuery
     CreateQuery QueryName, MCode
     Debug.Assert QueryExists(QueryName)
     
     ' Tester la fonction LoadQueryToWorksheet
-    LoadQueryToWorksheet QueryName, LoadDataSheet, StartCell
+    LoadQueryToWorksheet QueryName, LoadDataSheet, startCell
     Debug.Assert IsQueryLoaded(QueryName)
     
     ' Tester la fonction GetQueryObject
@@ -161,7 +163,7 @@ Public Sub TestQueryTools()
     ' Tester la fonction GetQueryLocation
     Set rng = GetQueryLocation(QueryName)
     Debug.Assert Not rng Is Nothing
-    Debug.Print "La requête est chargée dans la plage : " & rng.Address
+    Debug.Print "La requÃªte est chargÃ©e dans la plage : " & rng.Address
     
     ' Tester la fonction UnloadQuery
     UnloadQuery QueryName
