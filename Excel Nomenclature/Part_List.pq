@@ -24,16 +24,6 @@ let
     // Inverse les valeurs de la colonne "Depth"
     MaxDepth = List.Max(Result[Depth]),
     #"Inverted Depth" = Table.TransformColumns(Result, {"Depth", each MaxDepth - _, type number}),
-    #"Added Index" = Table.AddIndexColumn(#"Inverted Depth", "Index", 0, 1, Int64.Type),
-    #"Added NextDepth" = Table.AddColumn(#"Added Index", "NextDepth", each try #"Added Index"{[Index]+1}[Depth] otherwise null),
-    // Modifie la colonne "ArrowSymbol" pour changer le symbole en fonction de la valeur de "Depth" et "NextDepth", et n'ajoute pas de symbole si "Depth" est 0
-    #"Added ArrowSymbol" = Table.AddColumn(#"Added NextDepth", "ArrowSymbol", each if [Depth] = 0 then "" else if [Depth] = [NextDepth] then " ├─> " else " └─> "),
-    #"Removed Columns" = Table.RemoveColumns(#"Added ArrowSymbol",{"NextDepth"}),
-    // Modifie la colonne "RepeatedSymbol" pour répéter " ┃   " en fonction de la valeur de "Depth", et n'ajoute pas de "tabulation" si "Depth" est 0
-    #"Added RepeatedSymbol" = Table.AddColumn(#"Removed Columns", "RepeatedSymbol", each if [Depth] = 0 then "" else Text.Repeat(" │   ", [Depth]-1)),
-    // Fusionne les colonnes "RepeatedSymbol" et "ArrowSymbol" pour créer la colonne "Arrow"
-    #"Added Arrow Column" = Table.CombineColumns(#"Added RepeatedSymbol",{"RepeatedSymbol", "ArrowSymbol"},Combiner.CombineTextByDelimiter("", QuoteStyle.None),"Arrow"),    #"Merged Columns" = Table.CombineColumns(#"Added Arrow Column",{"Arrow", "Name"},Combiner.CombineTextByDelimiter("", QuoteStyle.None),"Name"),
-    #"Reordered Columns" = Table.ReorderColumns(#"Merged Columns",{"Depth", "id", "Name", "Qty", "BranchQty"}),
-    #"Reordered Columns1" = Table.ReorderColumns(#"Reordered Columns",{"Index", "Depth", "id", "Name", "Qty", "BranchQty"})
+    #"Added Custom" = Table.AddColumn(#"Inverted Depth", "TimeStamps", each DateTime.LocalNow())
 in
-    #"Reordered Columns1"
+    #"Added Custom"
