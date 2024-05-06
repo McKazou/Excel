@@ -15,9 +15,8 @@ let
                 // Vérification de l'existence de la colonne 'BranchQty' et création si nécessaire
                 branchQty = row[BranchQty],
                 
-                
-                // Récupération du tableau correspondant au nom dans le classeur source
-                currentTable = try source{[Name=name]}[Content] otherwise null,
+                // Récupération du tableau correspondant au nom dans le tableau "Backend_AllTableMerge"
+                currentTable = try function_FilterMergeTable(name) otherwise null,
                 
                 // Création d'un tableau avec la ligne actuelle
                 currentRowTable = #table({"id", "Name", "Qty", "Depth", "BranchQty"}, {{row[id], row[Name], row[Qty], row[Depth], row[BranchQty] }}),
@@ -32,7 +31,7 @@ let
                         addedQty = Table.AddColumn(addedDepth, "BranchQty", each if Type.Is(Value.Type([Qty]), Text.Type) then "#Text" else if [Qty] is number then branchQty*[Qty] else branchQty),
                         
                         // Appel récursif de la fonction avec le nouveau tableau
-                        recursionResult = AssemblyRecursion(addedQty,source)
+                        recursionResult = function_AssemblyRecursion(addedQty,source)
                     in
                         // Combinaison du tableau de la ligne actuelle et du résultat de la récursion
                         Table.Combine({currentRowTable, recursionResult})

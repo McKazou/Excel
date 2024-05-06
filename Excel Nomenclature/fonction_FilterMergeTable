@@ -1,0 +1,10 @@
+let
+    FilterMegeTable = (inputName as text) as table =>
+    let
+        Source = Backend_AllTableMerge,
+        #"Removed Columns" = Table.RemoveColumns(Source,{"Timestamp"}),
+        #"Filtered Rows" = Table.SelectRows(#"Removed Columns", each ([Assembly Name] = inputName)),
+        #"Removed Columns1" = Table.RemoveColumns(#"Filtered Rows",{"Assembly Name"})
+    in
+        #"Removed Columns1"
+in FilterMegeTable
