@@ -92,6 +92,29 @@ Public Sub CreateTable(wsheet As Worksheet, tableName As String, RangeString As 
     tbl.Name = tableName
 End Sub
 
+Public Function AreTablesIdentical(table1 As Range, table2 As Range) As Boolean
+    ' Vérifier si les deux tableaux ont le même nombre de lignes et de colonnes
+    If table1.Rows.Count <> table2.Rows.Count Or table1.Columns.Count <> table2.Columns.Count Then
+        AreTablesIdentical = False
+        Exit Function
+    End If
+    
+    ' Comparer chaque cellule dans les deux tableaux
+    Dim r As Long, c As Long
+    For r = 1 To table1.Rows.Count
+        For c = 1 To table1.Columns.Count
+            If table1.Cells(r, c).value <> table2.Cells(r, c).value Then
+                AreTablesIdentical = False
+                Exit Function
+            End If
+            DoEvents ' Permettre à Excel de traiter d'autres événements
+        Next c
+    Next r
+    
+    ' Si toutes les cellules sont identiques, les tableaux sont identiques
+    AreTablesIdentical = True
+End Function
+
 
 ' Function to get the name of tha table that intersect with the position of the range
 Public Function getTableNameFromRange(rangeToSearch As Range) As String
@@ -115,6 +138,35 @@ Public Function getTableNameFromRange(rangeToSearch As Range) As String
     ' Si aucun tableau n'a été trouvé, retourner une chaîne vide
     getTableNameFromRange = ""
 End Function
+
+' Fonction pour renommer un tableau
+Public Sub renameTable(oldName As String, newName As String, Optional ws As Worksheet)
+    Dim tbl As ListObject
+
+    ' Si ws n'est pas défini, utiliser toutes les feuilles de calcul du classeur
+    If ws Is Nothing Then
+        Dim w As Worksheet
+        For Each w In ThisWorkbook.Worksheets
+            For Each tbl In w.ListObjects
+                If tbl.Name = oldName Then
+                    ' Renommer le tableau
+                    tbl.Name = newName
+                    Exit Sub
+                End If
+            Next tbl
+        Next w
+    Else
+        ' Sinon, utiliser uniquement la feuille de calcul spécifiée
+        For Each tbl In ws.ListObjects
+            If tbl.Name = oldName Then
+                ' Renommer le tableau
+                tbl.Name = newName
+                Exit Sub
+            End If
+        Next tbl
+    End If
+End Sub
+
 
 
 'Get the list of table présent in the workbook
