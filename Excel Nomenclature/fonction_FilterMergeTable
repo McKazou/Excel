@@ -1,10 +1,15 @@
 let
-    FilterMegeTable = (inputName as text) as table =>
+    // Définition de la fonction récursive AssemblyRecursion
+    function_FilterMergeTable = (PartName as text) as table =>
     let
-        Source = Backend_AllTableMerge,
-        #"Removed Columns" = Table.RemoveColumns(Source,{"Timestamp"}),
-        #"Filtered Rows" = Table.SelectRows(#"Removed Columns", each ([Assembly Name] = inputName)),
+        // Lire la première valeur de la colonne "Show Part list with History" du tableau "Parameters"
+        ShowPartListWithHistory = ParamTable{0}[#"Show Part list with History"],
+        
+        // Si la valeur est "TRUE", la source est "Backend_AllTableMerge_With_Differencies", sinon la source est "Backend_AllTableMerge"
+        Source = if ShowPartListWithHistory = true then Backend_AllTableMerge_With_Differencies else Backend_AllTableMerge,
+        
+        #"Removed Columns" = Table.RemoveColumns(Source,{"Timestamps"}),
+        #"Filtered Rows" = Table.SelectRows(#"Removed Columns", each ([Assembly Name] = PartName)),
         #"Removed Columns1" = Table.RemoveColumns(#"Filtered Rows",{"Assembly Name"})
-    in
-        #"Removed Columns1"
-in FilterMegeTable
+        in #"Removed Columns1"
+in function_FilterMergeTable

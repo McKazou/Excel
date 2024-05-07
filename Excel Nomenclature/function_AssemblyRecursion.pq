@@ -19,7 +19,7 @@ let
                 currentTable = try function_FilterMergeTable(name) otherwise null,
                 
                 // Création d'un tableau avec la ligne actuelle
-                currentRowTable = #table({"id", "Name", "Qty", "Depth", "BranchQty"}, {{row[id], row[Name], row[Qty], row[Depth], row[BranchQty] }}),
+                currentRowTable = #table({"id", "Name", "Qty", "Depth", "BranchQty", "Status"}, {{row[id], row[Name], row[Qty], row[Depth], row[BranchQty], try row[Status] otherwise "" }}),
                 
                 // Si le tableau actuel existe et que la profondeur est supérieure à 0, on continue la récursion
                 newTable = if currentTable <> null and depth > 0 then
@@ -28,7 +28,7 @@ let
                         addedDepth = Table.AddColumn(currentTable, "Depth", each depth - 1),
                         
                         // Ajout de la colonne "BranchQty" avec la quantité multipliée par la quantité de la ligne actuelle
-                        addedQty = Table.AddColumn(addedDepth, "BranchQty", each if Type.Is(Value.Type([Qty]), Text.Type) then "#Text" else if [Qty] is number then branchQty*[Qty] else branchQty),
+                        addedQty = Table.AddColumn(addedDepth, "BranchQty", each if Type.Is(Value.Type([Qty]), Text.Type) then try Number.FromText([Qty]) otherwise "#Text" else if [Qty] is number then branchQty*[Qty] else branchQty),
                         
                         // Appel récursif de la fonction avec le nouveau tableau
                         recursionResult = function_AssemblyRecursion(addedQty,source)
