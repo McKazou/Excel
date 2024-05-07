@@ -16,6 +16,7 @@ Option Explicit
 Private pDEFAULT_ARCHIVE_PREFIXE As String
 Private pDEFAULT_ARCHIVE_SHEET As String
 Private Const DEFAUT_FOLDER As String = "\ARCHIVE"
+Private Const DEFAUT_COLUMN_NAME_TIMESTAMPS As String = "Timestamps"
 
 ' Constructeur de la classe
 Public Sub Class_Initialize()
@@ -112,17 +113,21 @@ Private Function getRangeFromName(nameGiven As String)
 
             randText = GenerateRandomText(10, True, False, False)
             Set wsh = sheetToo.CreateSheet(randText)
-            queryTool.LoadQueryToWorksheet nameGiven, wsh, wsh.Range("A1")
+            Set QuerRange = wsh.Range("A1")
+            queryTool.LoadQueryToWorksheet nameGiven, wsh, QuerRange
             'Maintenant la Query est chargé dans l'onglet "wsh"
-            nameGiven = tabtool.getTableNameFromRange(wsh.Range("A1"))
-            Set getRangeFromName = tabtool.GetContent(nameGiven, wsh)
         Else
         'Si elle est chargé, on va récupéré l'emplacement de la Query, récupéré le tableau ou elle est, copier le contenu et aller le rajouter à un tableau
             Set QuerRange = queryTool.GetQueryLocation(nameGiven)
             Set wsh = QuerRange.Worksheet
-            nameGiven = tabtool.getTableNameFromRange(wsh.Range("A1"))
-            Set getRangeFromName = tabtool.GetContent(nameGiven)
         End If
+        
+        Dim tempName As String
+        tempName = tabtool.getTableNameFromRange(QuerRange)
+        If tempName <> nameGiven Then
+            tabtool.renameTable tempName, nameGiven
+        End If
+        Set getRangeFromName = tabtool.GetContent(nameGiven)
     Else
         'La Query n'existe pas
         'Try with Table
@@ -140,6 +145,10 @@ Private Function getRangeFromName(nameGiven As String)
 End Function
 'This function wil generate a CSV file
 Sub doCSVSnapshot(nameGiven As String, Optional relativeFolder As String, Optional FileName As String)
+
+    Dim sheeTool As New SheetsTools
+    Dim sheetList As Variant
+    sheetList = sheeTool.GetSheetNamesList 'Assuming this gets the original list of sheets
     
     'test if optional values are given
     If relativeFolder = "" Then
@@ -153,22 +162,6 @@ Sub doCSVSnapshot(nameGiven As String, Optional relativeFolder As String, Option
     Dim previousRange As Range
     Set previousRange = getRangeFromName("Backend_LatestCSV")
     
-    'Filtrer la colonne "Timestamps" pour n'afficher que les lignes avec la date la plus récente
-    Dim maxDate As Date
-    ' Trouver l'index de la colonne "Timestamps"
-    Dim colIndex As Integer
-    For colIndex = 1 To previousRange.Columns.Count
-        If previousRange.Cells(1, colIndex).value = "Timestamps" Then
-            Exit For
-        End If
-    Next colIndex
-    
-    ' Utiliser l'index pour accéder à la colonne et obtenir la date maximale
-    maxDate = Application.WorksheetFunction.Max(previousRange.Columns(colIndex))
-    
-    previousRange.AutoFilter Field:=previousRange.Columns("Timestamps").Column, Criteria1:="=" & maxDate
-    Set previousRange = previousRange.SpecialCells(xlCellTypeVisible)
-    
     If FileName = "" Then
         Dim Timestamp As String
         Timestamp = Format(Now, "yyyymmdd-HHMM")
@@ -178,7 +171,7 @@ Sub doCSVSnapshot(nameGiven As String, Optional relativeFolder As String, Option
     Dim absoluteFolder As String
     absoluteFolder = CurDir & relativeFolder
     
-    Dim tabToo As TableTools
+    Dim tabToo As New TableTools
     If Not tabToo.AreTablesIdentical(tabsRange, previousRange) Then
         ExportRangeToCSV tabsRange, absoluteFolder, nameGiven
     Else
@@ -186,12 +179,9 @@ Sub doCSVSnapshot(nameGiven As String, Optional relativeFolder As String, Option
     End If
     
     '------------- CLEANUP -------------------
-    Dim sheeTool As New SheetsTools
     Dim newSheetList As Variant
-    Set newSheetList = sheeTool.GetSheetNamesList
+    newSheetList = sheeTool.GetSheetNamesList
     
-    Dim sheetList As Variant
-    Set sheetList = sheeTool.GetSheetNamesList 'Assuming this gets the original list of sheets
     
     Dim sh As Variant
     For Each sh In newSheetList
@@ -202,6 +192,11 @@ Sub doCSVSnapshot(nameGiven As String, Optional relativeFolder As String, Option
             Application.DisplayAlerts = True 'Enable prompts again
         End If
     Next sh
+    
+    'Focus back at summary
+    On Error Resume Next
+    Sheets("Summary").Select
+    On Error GoTo 0
 End Sub
 
 Sub ExportRangeToCSV(RangeToExport As Range, OutputFolder As String, FileName As String)
